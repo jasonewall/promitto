@@ -104,7 +104,7 @@ describe(PromiseMock.name, () => {
             const p = new PassivePromiseMock<string>();
             const results: string[] = [];
 
-            p.catch((reason: any) => {
+            p.catch(() => {
                 results.push('catch');
             }).finally(() => {
                 results.push('finally');
