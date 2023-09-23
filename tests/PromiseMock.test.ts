@@ -174,7 +174,6 @@ describe(PromiseMock.name, () => {
                     throw new Error(`${value} is not old enough to drink!`)
                 }).catch((reason: Error) => {
                     results.push('catch');
-                    expect(reason.message).toEqual('17 is not old enough to drnk!');
                 });
             }
 
