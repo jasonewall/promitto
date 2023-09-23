@@ -1,8 +1,8 @@
 {
-  "name": "typescript-playground",
+  "name": "promitto",
   "private": false,
   "version": "0.0.0",
-  "description": "A place to play with all things Typescript.",
+  "description": "Easier mocked promises to control resolutions",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
@@ -16,7 +16,8 @@
     "build": "npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc -p tsconfig.build.json --module commonjs --outDir dist/cjs --target es5",
     "build:esm": "tsc -p tsconfig.build.json --module esNext --outDir dist/esm --target es6",
-    "test": "jest"
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "devDependencies": {
     "@swc/jest": "^0.2.29",

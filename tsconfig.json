@@ -1,13 +1,22 @@
 {
     "compilerOptions": {
+        "target": "ES6",
         "baseUrl": ".",
+        "moduleResolution": "node",
         "declaration": true,
+        "declarationDir": "./dist",
         "pretty": true,
         "skipLibCheck": true,
         "removeComments": true,
+        "resolveJsonModule": true,
         "esModuleInterop": true,
         "strict": true,
-        "lib": ["ESNext", "DOM"]
+        "paths": {
+            "@self/*": ["src/*"]
+        },
+        "types": [
+            "@types/jest"
+        ]
     },
-    "exclude": ["node_modules", "dist", "tests"]
+    "exclude": ["node_modules", "dist"]
 }
