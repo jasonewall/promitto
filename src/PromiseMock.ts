@@ -25,11 +25,15 @@ function unwrap<T>(
   destination(value as T);
 }
 
+let PromiseId = 0;
+
 /**
- * PromiseMock base. Handles basic implementation of then/catch/finally for the two
+ * PromiseMock base. Handles basic implementation of then/catch/finally for the
  * extension PromiseMock types.
  */
 class PromiseMock<T> {
+  protected id = ++PromiseId;
+
   protected status: PromiseState = PromiseState.Pending;
 
   protected value?: T;
@@ -43,13 +47,13 @@ class PromiseMock<T> {
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
     return new ActivePromiseMock<TResult1>(
-      (resolve: (value: TResult1) => void, reject: (reason: any) => void) => {
+      (resolveNext: (value: TResult1) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
           this.actions.push(() => {
-            this.onFulfilled(resolve, reject, onfulfilled);
+            this.onFulfilled(resolveNext, rejectNext, onfulfilled);
           });
         } else {
-          this.onFulfilled(resolve, reject, onfulfilled);
+          this.onFulfilled(resolveNext, rejectNext, onfulfilled);
         }
       },
     );
@@ -58,9 +62,9 @@ class PromiseMock<T> {
   catch<TResult = never>(
     onrejected?: RejectionHandler<TResult> | undefined | null,
   ): Promise<T | TResult> {
-    return new ActivePromiseMock<TResult>(
+    return new ActivePromiseMock<T | TResult>(
       (
-        resolveNext: (value: TResult) => void,
+        resolveNext: (value: T | TResult) => void,
         rejectNext: (reason: any) => void,
       ) => {
         if (this.status === PromiseState.Pending) {
@@ -106,7 +110,7 @@ class PromiseMock<T> {
   private onFulfilled<TResult>(
     resolve: (value: TResult) => void,
     reject: (reason: any) => void,
-    onfulfilled: FulfillmentHandler<T, TResult> | undefined | null,
+    onfulfilled?: FulfillmentHandler<T, TResult> | undefined | null,
   ) {
     if (this.status !== PromiseState.Fulfilled) return;
 
@@ -120,18 +124,28 @@ class PromiseMock<T> {
     }
   }
 
+  private onRejected<TResult, TReason = never>(
+    resolveNext: (value: T | TResult) => void,
+    rejectNext: (reason: any) => void,
+    onrejected?: RejectionHandler<TReason> | undefined | null,
+  ): void;
+
   private onRejected<TResult>(
-    resolve: (value: TResult) => void,
-    reject: (reason: any) => void,
-    onrejected: RejectionHandler<TResult> | undefined | null,
+    resolveNext: (value: T | TResult) => void,
+    rejectNext: (reason: any) => void,
+    onrejected?: RejectionHandler<TResult> | undefined | null,
   ) {
-    if (onrejected) {
-      try {
-        const chainValue = onrejected(this.reason);
-        unwrap(chainValue, (value: TResult) => resolve(value));
-      } catch (error) {
-        reject(error);
+    if (this.status === PromiseState.Rejected) {
+      if (onrejected) {
+        try {
+          const chainValue = onrejected(this.reason);
+          unwrap(chainValue, resolveNext);
+        } catch (error) {
+          rejectNext(error);
+        }
       }
+    } else {
+      resolveNext(this.value!);
     }
   }
 
@@ -158,8 +172,8 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
   }
 
   reject(reason: any) {
-    this.reason = reason;
     this.status = PromiseState.Rejected;
+    this.reason = reason;
     this.runActions();
   }
 }
@@ -180,6 +194,11 @@ class RejectedPromiseMock<T> extends PromiseMock<T> {
   }
 }
 
+/**
+ * Most akin to core Promises as the constructor takes in an executor. Mostly used
+ * internally for the chain functions then/catch/finally as they have need for injecting behavour
+ * to the promise chain.
+ */
 class ActivePromiseMock<T> extends PromiseMock<T> {
   constructor(
     executor: PromiseExecutor<T>,

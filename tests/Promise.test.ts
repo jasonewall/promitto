@@ -1,71 +1,91 @@
 import { describe } from "@jest/globals";
+import { PromiseExecutor, ActivePromiseMock } from '@self/PromiseMock';
 
-// to compare our behaviour with real promises
-describe("Core Promise", () => {
-  describe("rejected", () => {
-    test("what happens when we call then on a rejected promise", async () => {
-      let [caught, thened, caught2] = [false, false, false];
-      Promise.reject(new Error("This is fine"))
-        .catch(() => {
-          caught = true;
-        })
-        .then((value: void) => {
-          thened = true;
-        })
-        .catch((reason: any) => {
-          caught2 = true;
-        });
+interface TestPromiseConstructor {
+  new <T>(executor: PromiseExecutor<T>): Promise<T>;
 
-      await Promise.resolve();
-      expect(caught).toBeTruthy();
+  reject<T = never>(reason?: any): Promise<T>;
 
-      await Promise.resolve();
-      expect(thened).toBeTruthy();
+  resolve<T>(value: T): Promise<T>;
+}
 
-      await Promise.resolve();
-      expect(caught2).toBeFalsy();
+const promiseTypes: TestPromiseConstructor[] = []
+promiseTypes.push(ActivePromiseMock);
+promiseTypes.push(Promise);
 
-      [caught, thened, caught2] = [false, false, false];
-      Promise.reject(new Error("this is still fine"))
-        .catch(() => {
-          caught = true;
-          throw new Error("new error");
-        })
-        .then((value: never) => {
-          thened = true;
-        })
-        .catch((reason: any) => {
-          caught2 = true;
-        });
 
-      await Promise.resolve();
-      expect(caught).toBeTruthy();
+promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
+  describe(TestPromise.name, () => {
+    describe("rejected", () => {
+      test.only("what happens when we call then on a rejected promise", async () => {
+        let [caught, thened, caught2] = [false, false, false]
+        let chain: Promise<void>;
+        let results: string[];
 
-      await Promise.resolve();
-      expect(thened).toBeFalsy();
+        results = [];
+        chain = TestPromise.reject(new Error("This is fine"))
+          .catch(() => {
+            caught = true;
+            results.push('catch1');
+          })
+          .then(() => {
+            thened = true;
+            results.push('then');
+          })
+          .catch(() => {
+            caught2 = true;
+            results.push('catch2');
+          });
 
-      await Promise.resolve();
-      expect(caught2).toBeTruthy();
-    });
+        await chain;
+        expect(caught).toBeTruthy();
+        expect(thened).toBeTruthy();
+        expect(caught2).toBeFalsy();
+        expect(results).toEqual([
+          'catch1',
+          'then',
+        ]);
 
-    test("how sequencing works", async () => {
-      const results: string[] = [];
+        [caught, thened, caught2] = [false, false, false];
+        results = [];
+        chain = Promise.reject(new Error("this is still fine"))
+          .catch(() => {
+            caught = true;
+            throw new Error("new error");
+          })
+          .then(() => {
+            thened = true;
+          })
+          .catch(() => {
+            caught2 = true;
+          });
 
-      const chain = Promise.reject(new Error("This is fine"))
-        .finally(() => {
-          results.push("finally");
-        })
-        .catch(() => {
-          return "help";
-        })
-        .then((value: string) => {
-          results.push("then");
-          results.push(value);
-        });
 
-      await chain;
+        await chain;
+        expect(caught).toBeTruthy();
+        expect(thened).toBeFalsy();
+        expect(caught2).toBeTruthy();
+      });
 
-      expect(results).toEqual(["finally", "then", "help"]);
+      test("how sequencing works", async () => {
+        const results: string[] = [];
+
+        const chain = Promise.reject(new Error("This is fine"))
+          .finally(() => {
+            results.push("finally");
+          })
+          .catch(() => {
+            return "help";
+          })
+          .then((value: string) => {
+            results.push("then");
+            results.push(value);
+          });
+
+        await chain;
+
+        expect(results).toEqual(["finally", "then", "help"]);
+      });
     });
   });
 });
