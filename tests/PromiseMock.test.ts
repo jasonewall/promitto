@@ -183,12 +183,73 @@ describe(PromiseMock.name, () => {
 
         expect(results).toEqual(["then1", "then2", "catch"]);
       });
-
-      it.todo("should allow calling onrejected in then");
     });
   });
 
-  it.todo(
-    "should behave correctly when adding multiple handlers to the same promise (not chaining)",
-  );
+  describe('adding multiple handlers to the same promise (not chaining)', () => {
+    const buildChain = (preResolution?: (promise: PassivePromiseMock<string>) => void): [PassivePromiseMock<string>, string[]] => {
+      const p = new PassivePromiseMock<string>();
+      if (preResolution) {
+        preResolution(p);
+      }
+      const results: string[] = [];
+      p.then((value: string) => results.push(value));
+      p.catch((error: Error) => results.push(error.message));
+      p.finally(() => results.push('finally'));
+      return [p, results];
+    }
+
+    it('should only call then and finally when resolved', () => {
+      const [p, results] = buildChain();
+      p.resolve('Success!');
+      expect(results).toEqual([
+        'Success!',
+        'finally',
+      ]);
+    });
+
+    it('should only call then and finally if pre-resolved', () => {
+      const [p, results] = buildChain((p: PassivePromiseMock<string>) => {
+        p.resolve('Pre-resolved!');
+      });
+
+      expect(results).toEqual([
+        'Pre-resolved!',
+        'finally',
+      ]);
+    });
+
+    it('should only call catch and finally when rejected', () => {
+      const [p, results] = buildChain();
+      p.reject(new Error('Rejected!'));
+      expect(results).toEqual([
+        'Rejected!',
+        'finally',
+      ]);
+    });
+
+    it('should only call catch and finally if pre-resolved', () => {
+      const [p, results] = buildChain((p: PassivePromiseMock<string>) => {
+        p.reject(new Error('Pre-rejected!'));
+      });
+
+      expect(results).toEqual([
+        'Pre-rejected!',
+        'finally',
+      ]);
+    });
+  });
+
+  describe('then', () => {
+    it.todo("should allow calling onrejected in then");
+    it.todo('should be tested with all chain functions');
+  });
+
+  describe('finally', () => {
+    it.todo('should be tested with all chain functions');
+  })
+
+  describe('catch', () => {
+    it.todo('should be tested with all chain functions');
+  })
 });

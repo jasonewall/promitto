@@ -1,5 +1,6 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
+type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -41,20 +42,11 @@ class PromiseMock<T> {
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
-    onrejected &&
-      this.actions.push(() => {
-        if (this.status === PromiseState.Rejected) {
-          onrejected(this.reason);
-        }
-      });
-
     return new ActivePromiseMock<TResult1>(
       (resolve: (value: TResult1) => void, reject: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
           this.actions.push(() => {
-            if (this.status === PromiseState.Fulfilled) {
-              this.onFulfilled(resolve, reject, onfulfilled);
-            }
+            this.onFulfilled(resolve, reject, onfulfilled);
           });
         } else {
           this.onFulfilled(resolve, reject, onfulfilled);
@@ -73,34 +65,32 @@ class PromiseMock<T> {
       ) => {
         if (this.status === PromiseState.Pending) {
           this.actions.push(() => {
-            if (this.status === PromiseState.Rejected) {
-              this.onRejected(resolveNext, rejectNext, onrejected);
-            }
+            this.onRejected(resolveNext, rejectNext, onrejected);
           });
         } else {
-          if (this.status === PromiseState.Rejected) {
-            this.onRejected(resolveNext, rejectNext, onrejected);
-          }
+          this.onRejected(resolveNext, rejectNext, onrejected);
         }
       },
     );
   }
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-    onfinally && this.actions.push(onfinally);
     return new ActivePromiseMock<T>(
       (resolve: (value: T) => void, reject: (reason: any) => void) => {
-        this.actions.push(() => {
-          if (this.status === PromiseState.Fulfilled) {
-            resolve(this.value!);
-          }
-        });
+        if (this.status === PromiseState.Pending) {
+          onfinally && this.actions.push(onfinally);
+          this.actions.push(() => {
+            if (this.status === PromiseState.Fulfilled) {
+              resolve(this.value!);
+            }
+          });
 
-        this.actions.push(() => {
-          if (this.status === PromiseState.Rejected) {
+          this.actions.push(() => {
             reject(this.reason);
-          }
-        });
+          });
+        } else {
+          onfinally && onfinally();
+        }
       },
     );
   }
@@ -118,10 +108,12 @@ class PromiseMock<T> {
     reject: (reason: any) => void,
     onfulfilled: FulfillmentHandler<T, TResult> | undefined | null,
   ) {
+    if (this.status !== PromiseState.Fulfilled) return;
+
     if (onfulfilled) {
       try {
-        const chainValue = onfulfilled(this.value!);
-        unwrap(chainValue, resolve);
+        const resultValue = onfulfilled(this.value!);
+        unwrap(resultValue, resolve);
       } catch (error: any) {
         reject(error);
       }
@@ -145,6 +137,10 @@ class PromiseMock<T> {
 
   static resolve<T>(value: T): ResolvedPromiseMock<T> {
     return new ResolvedPromiseMock(value);
+  }
+
+  static reject<T = never>(reason?: any): PromiseMock<T> {
+    return new RejectedPromiseMock<T>(reason);
   }
 }
 
@@ -171,37 +167,42 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
 class ResolvedPromiseMock<T> extends PromiseMock<T> {
   constructor(value: T) {
     super();
-    this.value = value;
     this.status = PromiseState.Fulfilled;
+    this.value = value;
+  }
+}
+
+class RejectedPromiseMock<T> extends PromiseMock<T> {
+  constructor(reason?: any) {
+    super();
+    this.reason = reason;
+    this.status = PromiseState.Rejected;
   }
 }
 
 class ActivePromiseMock<T> extends PromiseMock<T> {
   constructor(
-    action: (
-      resolve: (value: T) => void,
-      reject: (reason: any) => void,
-    ) => void,
+    executor: PromiseExecutor<T>,
   ) {
     super();
-    const resolve = (value: T) => {
+    const resolve = (value: T | PromiseLike<T>) => {
       this.status = PromiseState.Fulfilled;
-      this.value = value;
+      unwrap(value, (unwrapped: T) => this.value = unwrapped);
       this.runActions();
     };
 
     const reject = (reason: any) => {
-      this.reason = reason;
       this.status = PromiseState.Rejected;
+      this.reason = reason;
       this.runActions();
     };
 
     try {
-      action(resolve, reject);
+      executor(resolve, reject);
     } catch (error) {
       reject(error);
     }
   }
 }
 
-export { PromiseMock, PassivePromiseMock };
+export { PromiseExecutor, PromiseMock, ActivePromiseMock, PassivePromiseMock };
