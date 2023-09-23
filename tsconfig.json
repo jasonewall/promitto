@@ -1,22 +1,20 @@
 {
-    "compilerOptions": {
-        "target": "ES6",
-        "baseUrl": ".",
-        "moduleResolution": "node",
-        "declaration": true,
-        "declarationDir": "./dist",
-        "pretty": true,
-        "skipLibCheck": true,
-        "removeComments": true,
-        "resolveJsonModule": true,
-        "esModuleInterop": true,
-        "strict": true,
-        "paths": {
-            "@self/*": ["src/*"]
-        },
-        "types": [
-            "@types/jest"
-        ]
+  "compilerOptions": {
+    "target": "ES6",
+    "baseUrl": ".",
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationDir": "./dist",
+    "pretty": true,
+    "skipLibCheck": true,
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "paths": {
+      "@self/*": ["src/*"]
     },
-    "exclude": ["node_modules", "dist"]
+    "types": ["@types/jest"]
+  },
+  "exclude": ["node_modules", "dist"]
 }
