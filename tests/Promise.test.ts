@@ -17,7 +17,7 @@ promiseTypes.push(Promise);
 promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
   describe(TestPromise.name, () => {
     describe("rejected", () => {
-      test.only("what happens when we call then on a rejected promise", async () => {
+      test("what happens when we call then on a rejected promise", async () => {
         let [caught, thened, caught2] = [false, false, false]
         let chain: Promise<void>;
         let results: string[];
@@ -51,13 +51,16 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         chain = Promise.reject(new Error("this is still fine"))
           .catch(() => {
             caught = true;
+            results.push('catch1');
             throw new Error("new error");
           })
           .then(() => {
             thened = true;
+            results.push('then')
           })
           .catch(() => {
             caught2 = true;
+            results.push('catch2');
           });
 
 
@@ -65,6 +68,10 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         expect(caught).toBeTruthy();
         expect(thened).toBeFalsy();
         expect(caught2).toBeTruthy();
+        expect(results).toEqual([
+          'catch1',
+          'catch2',
+        ]);
       });
 
       test("how sequencing works", async () => {

@@ -1,6 +1,7 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
 type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
+type DeferredAction = () => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -40,7 +41,7 @@ class PromiseMock<T> {
 
   protected reason?: any;
 
-  protected actions: (() => void)[] = [];
+  protected deferredActions: (() => void)[] = [];
 
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
@@ -49,11 +50,9 @@ class PromiseMock<T> {
     return new ActivePromiseMock<TResult1>(
       (resolveNext: (value: TResult1) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
-          this.actions.push(() => {
-            this.onFulfilled(resolveNext, rejectNext, onfulfilled);
-          });
+          this.defer(() => this.settleThen(resolveNext, rejectNext, onfulfilled));
         } else {
-          this.onFulfilled(resolveNext, rejectNext, onfulfilled);
+          this.settleThen(resolveNext, rejectNext, onfulfilled);
         }
       },
     );
@@ -68,11 +67,9 @@ class PromiseMock<T> {
         rejectNext: (reason: any) => void,
       ) => {
         if (this.status === PromiseState.Pending) {
-          this.actions.push(() => {
-            this.onRejected(resolveNext, rejectNext, onrejected);
-          });
+          this.defer(() => this.settleCatch(resolveNext, rejectNext, onrejected));
         } else {
-          this.onRejected(resolveNext, rejectNext, onrejected);
+          this.settleCatch(resolveNext, rejectNext, onrejected);
         }
       },
     );
@@ -80,17 +77,18 @@ class PromiseMock<T> {
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
     return new ActivePromiseMock<T>(
-      (resolve: (value: T) => void, reject: (reason: any) => void) => {
+      (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
-          onfinally && this.actions.push(onfinally);
-          this.actions.push(() => {
+          onfinally && this.defer(onfinally);
+
+          this.defer(() => {
             if (this.status === PromiseState.Fulfilled) {
-              resolve(this.value!);
+              resolveNext(this.value!);
             }
           });
 
-          this.actions.push(() => {
-            reject(this.reason);
+          this.defer(() => {
+            rejectNext(this.reason);
           });
         } else {
           onfinally && onfinally();
@@ -103,11 +101,15 @@ class PromiseMock<T> {
     return `PromiseMock`;
   }
 
-  protected runActions() {
-    for (const action of this.actions) action();
+  protected runDeferred() {
+    for (const action of this.deferredActions) action();
   }
 
-  private onFulfilled<TResult>(
+  private defer(action: DeferredAction) {
+    this.deferredActions.push(action);
+  }
+
+  private settleThen<TResult>(
     resolve: (value: TResult) => void,
     reject: (reason: any) => void,
     onfulfilled?: FulfillmentHandler<T, TResult> | undefined | null,
@@ -124,13 +126,7 @@ class PromiseMock<T> {
     }
   }
 
-  private onRejected<TResult, TReason = never>(
-    resolveNext: (value: T | TResult) => void,
-    rejectNext: (reason: any) => void,
-    onrejected?: RejectionHandler<TReason> | undefined | null,
-  ): void;
-
-  private onRejected<TResult>(
+  private settleCatch<TResult>(
     resolveNext: (value: T | TResult) => void,
     rejectNext: (reason: any) => void,
     onrejected?: RejectionHandler<TResult> | undefined | null,
@@ -168,13 +164,13 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
   resolve(value: T) {
     this.status = PromiseState.Fulfilled;
     this.value = value;
-    this.runActions();
+    this.runDeferred();
   }
 
   reject(reason: any) {
     this.status = PromiseState.Rejected;
     this.reason = reason;
-    this.runActions();
+    this.runDeferred();
   }
 }
 
@@ -207,13 +203,13 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
     const resolve = (value: T | PromiseLike<T>) => {
       this.status = PromiseState.Fulfilled;
       unwrap(value, (unwrapped: T) => this.value = unwrapped);
-      this.runActions();
+      this.runDeferred();
     };
 
     const reject = (reason: any) => {
       this.status = PromiseState.Rejected;
       this.reason = reason;
-      this.runActions();
+      this.runDeferred();
     };
 
     try {
