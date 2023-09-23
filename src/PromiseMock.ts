@@ -48,35 +48,28 @@ class PromiseMock<T> {
             if (this.status === PromiseState.Pending) {
                 this.actions.push(() => {
                     if(this.status === PromiseState.Fulfilled) {
-                        if (onfulfilled) {
-                            const chainValue = onfulfilled(this.value!);
-                            unwrap(chainValue, resolve);
-                        }
+                        this.onFulfilled(resolve, reject, onfulfilled);
                     }
                 });
             } else {
-                if (onfulfilled) {
-                    const chainValue = onfulfilled(this.value!)
-                    unwrap(chainValue, resolve);
-                }
+                this.onFulfilled(resolve, reject, onfulfilled);
             }
         });
     }
 
     catch<TResult = never>(onrejected?: RejectionHandler<TResult> | undefined | null): Promise<T | TResult> {
-        return new ActivePromiseMock<TResult>((resolve: (value: TResult) => void, reject: (reason: any) => void) => {
-            this.actions.push(() => {
-                if (this.status === PromiseState.Rejected) {
-                    if (onrejected) {
-                        try {
-                            const chainValue = onrejected(this.reason);
-                            unwrap(chainValue, (value: TResult) => resolve(value));
-                        } catch (error) {
-                            reject(error);
-                        }
+        return new ActivePromiseMock<TResult>((resolveNext: (value: TResult) => void, rejectNext: (reason: any) => void) => {
+            if (this.status === PromiseState.Pending) {
+                this.actions.push(() => {
+                    if (this.status === PromiseState.Rejected) {
+                       this.onRejected(resolveNext, rejectNext, onrejected)
                     }
+                });
+            } else {
+                if (this.status === PromiseState.Rejected) {
+                    this.onRejected(resolveNext, rejectNext, onrejected);
                 }
-            });
+            }
         });
     }
 
@@ -105,6 +98,36 @@ class PromiseMock<T> {
         for(const action of this.actions) action();
     }
 
+    private onFulfilled<TResult>(
+        resolve: (value: TResult) => void,
+        reject: (reason: any) => void,
+        onfulfilled: FulfillmentHandler<T, TResult> | undefined | null,
+    ) {
+        if (onfulfilled) {
+            try {
+                const chainValue = onfulfilled(this.value!);
+                unwrap(chainValue, resolve);
+            } catch (error: any) {
+                reject(error);
+            }
+        }
+    }
+
+    private onRejected<TResult>(
+        resolve: (value: TResult) => void,
+        reject: (reason: any) => void,
+        onrejected: RejectionHandler<TResult> | undefined | null,
+    ) {
+        if (onrejected) {
+            try {
+                const chainValue = onrejected(this.reason);
+                unwrap(chainValue, (value: TResult) => resolve(value));
+            } catch (error) {
+                reject(error);
+            }
+        }
+    }
+
     static resolve<T>(value: T): ResolvedPromiseMock<T> {
         return new ResolvedPromiseMock(value);
     }
@@ -120,7 +143,6 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
     resolve(value: T) {
         this.status = PromiseState.Fulfilled;
         this.value = value;
-
         this.runActions();
     }
 

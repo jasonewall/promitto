@@ -134,6 +134,54 @@ describe(PromiseMock.name, () => {
             expect(results).toEqual(['finally', 'then', 'help']);
         });
 
+        describe('by throwing errors from a then block', () => {
 
+            let p: PassivePromiseMock<string>;
+            const results: string[] = [];
+
+            beforeEach(() => {
+                p = new PassivePromiseMock<string>();
+                results.length = 0;
+            });
+
+            function setupChain() {
+                p.then(() => {
+                    results.push('then1');
+                    return 17;
+                }).then((value: number) => {
+                    results.push('then2');
+                    throw new Error(`${value} is not old enough to drink!`)
+                }).catch((reason: Error) => {
+                    results.push('catch');
+                    expect(reason.message).toEqual('17 is not old enough to drnk!');
+                });
+            }
+
+            it('should work when resolving after chain is setup', () => {
+                setupChain();
+                p.resolve("Minor Person's name");
+
+                expect(results).toEqual([
+                    'then1',
+                    'then2',
+                    'catch'
+                ]);
+            });
+
+            it('should work when resolving before chain is setup', () => {
+                p.resolve("Minor person's name");
+                setupChain();
+
+                expect(results).toEqual([
+                    'then1',
+                    'then2',
+                    'catch'
+                ]);
+            });
+
+            it.todo('should allow calling onrejected in then')
+        });
     });
+
+    it.todo('should behave correctly when adding multiple handlers to the same promise (not chaining)');
 });
