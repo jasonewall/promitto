@@ -139,7 +139,7 @@ class ResolvedPromiseMock<T> extends PromiseMock<T> {
     }
 }
 
-class ActivePromiseMock<T> extends PassivePromiseMock<T>{
+class ActivePromiseMock<T> extends PromiseMock<T>{
     constructor(action: (resolve: (value: T) => void, reject: (reason: any) => void) => void) {
         super()
         const resolve = (value: T) => {
