@@ -97,6 +97,27 @@ describe(PromiseMock.name, () => {
             const result = await p;
             expect(result).toEqual('waiting for you');
         });
+
+        it('should work with finally first', async () => {
+            const p = new PassivePromiseMock<string>();
+            const results: string[] = [];
+
+            const chain = p.finally(() => {
+                results.push('finally');
+            }).then((value: string) => {
+                results.push('then');
+                return 13;
+            });
+
+            p.resolve('Thirteen');
+            const result = await chain;
+
+            expect(result).toEqual(13);
+            expect(results).toEqual([
+                'finally',
+                'then',
+            ]);
+        });
     });
 
     describe('rejected', () => {
