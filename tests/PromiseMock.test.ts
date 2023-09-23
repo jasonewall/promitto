@@ -26,7 +26,7 @@ describe(PromiseMock.name, () => {
         expect(result).toEqual("[object PromiseMock]");
     });
 
-    describe('#resolve', () => {
+    describe('fulfilled', () => {
         it('should call finally and then handlers', () => {
             const p = new PassivePromiseMock<number>();
             const results: string[] = [];
@@ -77,6 +77,63 @@ describe(PromiseMock.name, () => {
             expect(results[0]).toEqual(87);
         });
 
-        test.todo('what should it do if we call then on a rejected promise');
+        it('should handle when thens return a promise', () => {
+            const p = new PassivePromiseMock<string>();
+
+            p.resolve("peter");
+
+            const results: string[] = [];
+            p.then((value: string) => PromiseMock.resolve(`${value} piper`))
+             .then((value: string) => results.push(value));
+
+
+            expect(results[0]).toEqual('peter piper');
+        });
+
+        it('should work with await', async () => {
+            const p = new PassivePromiseMock<string>();
+            p.resolve('waiting for you');
+
+            const result = await p;
+            expect(result).toEqual('waiting for you');
+        });
+    });
+
+    describe('rejected', () => {
+        it('should call finally', () => {
+            const p = new PassivePromiseMock<string>();
+            const results: string[] = [];
+
+            p.catch((reason: any) => {
+                results.push('catch');
+            }).finally(() => {
+                results.push('finally');
+            });
+
+            p.reject(new Error('this is fine'));
+            expect(results).toEqual([
+                'catch',
+                'finally',
+            ]);
+        });
+
+        it('should work if finally is first', () => {
+            const p = new PassivePromiseMock<string>();
+            const results: string[] = [];
+
+            p.finally(() => results.push('finally'))
+            .catch(() => {
+                return 'help';
+            }).then((value: string) => {
+                results.push('then');
+                results.push(value);
+            });
+
+            p.reject(new Error('derp'));
+
+            expect(results).toEqual(['finally', 'then', 'help']);
+        });
+
+
     });
 });

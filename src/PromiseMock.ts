@@ -32,25 +32,26 @@ class PromiseMock<T> {
 
     protected reason?: any;
 
-    protected fulfillmentHandlers: FulfillmentHandler<T,any>[] = []
-
-    protected rejectionHandlers: RejectionHandler<any>[] = []
-
-    protected finallyHandlers: (() => void)[] = [];
+    protected actions: (() => void)[] = [];
 
     then<TResult1 = T, TResult2 = never>(
         onfulfilled?: FulfillmentHandler<T,TResult1>| undefined | null,
         onrejected?: RejectionHandler<TResult2> | undefined | null
     ): Promise<TResult1 | TResult2> {
-        onfulfilled && this.fulfillmentHandlers.push(onfulfilled);
-        onrejected && this.rejectionHandlers.push(onrejected);
+        onrejected && this.actions.push(() => {
+            if (this.status === PromiseState.Rejected) {
+                onrejected(this.reason);
+            }
+        })
 
         return new ActivePromiseMock<TResult1>((resolve: (value: TResult1) => void, reject: (reason: any) => void) => {
             if (this.status === PromiseState.Pending) {
-                this.fulfillmentHandlers.push(() => {
-                    if (onfulfilled) {
-                        const chainValue = onfulfilled(this.value!);
-                        unwrap(chainValue, resolve);
+                this.actions.push(() => {
+                    if(this.status === PromiseState.Fulfilled) {
+                        if (onfulfilled) {
+                            const chainValue = onfulfilled(this.value!);
+                            unwrap(chainValue, resolve);
+                        }
                     }
                 });
             } else {
@@ -63,20 +64,49 @@ class PromiseMock<T> {
     }
 
     catch<TResult = never>(onrejected?: RejectionHandler<TResult> | undefined | null): Promise<T | TResult> {
-        return new PassivePromiseMock<TResult>();
+        return new ActivePromiseMock<TResult>((resolve: (value: TResult) => void, reject: (reason: any) => void) => {
+            this.actions.push(() => {
+                if (this.status === PromiseState.Rejected) {
+                    if (onrejected) {
+                        try {
+                            const chainValue = onrejected(this.reason);
+                            unwrap(chainValue, (value: TResult) => resolve(value));
+                        } catch (error) {
+                            reject(error);
+                        }
+                    }
+                }
+            });
+        });
     }
 
     finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-        onfinally && this.finallyHandlers.push(onfinally);
-        return new ActivePromiseMock<T>((resolve: (value: T) => void) => {
-            this.fulfillmentHandlers.push(() => {
-                resolve(this.value!);
+        onfinally && this.actions.push(onfinally);
+        return new ActivePromiseMock<T>((resolve: (value: T) => void, reject: (reason: any) => void) => {
+            this.actions.push(() => {
+                if (this.status === PromiseState.Fulfilled) {
+                    resolve(this.value!);
+                }
+            });
+
+            this.actions.push(() => {
+                if (this.status === PromiseState.Rejected) {
+                    reject(this.reason);
+                }
             });
         });
     }
 
     get [Symbol.toStringTag]() {
         return `PromiseMock`;
+    }
+
+    protected runActions() {
+        for(const action of this.actions) action();
+    }
+
+    static resolve<T>(value: T): ResolvedPromiseMock<T> {
+        return new ResolvedPromiseMock(value);
     }
 }
 
@@ -90,13 +120,22 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
     resolve(value: T) {
         this.status = PromiseState.Fulfilled;
         this.value = value;
-        for(const handler of this.fulfillmentHandlers) {
-            handler(value);
-        }
 
-        for(const handler of this.finallyHandlers) {
-            handler();
-        }
+        this.runActions();
+    }
+
+    reject(reason: any) {
+        this.reason = reason;
+        this.status = PromiseState.Rejected;
+        this.runActions();
+    }
+}
+
+class ResolvedPromiseMock<T> extends PromiseMock<T> {
+    constructor(value: T) {
+        super()
+        this.value = value;
+        this.status = PromiseState.Fulfilled;
     }
 }
 
@@ -106,18 +145,13 @@ class ActivePromiseMock<T> extends PassivePromiseMock<T>{
         const resolve = (value: T) => {
             this.status = PromiseState.Fulfilled;
             this.value = value;
-            for(const handler of this.fulfillmentHandlers) {
-                handler(value);
-            }
-
-            for(const handler of this.finallyHandlers) {
-                handler();
-            }
+            this.runActions();
         }
 
         const reject = (reason: any) => {
             this.reason = reason;
             this.status = PromiseState.Rejected
+            this.runActions();
         }
 
         try {
