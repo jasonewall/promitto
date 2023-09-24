@@ -240,10 +240,6 @@ describe(PromiseMock.name, () => {
     });
   });
 
-  describe('then', () => {
-    it.todo("should allow calling onrejected in then");
-    it.todo('should be tested with all chain functions');
-  });
 
   describe('finally', () => {
     it.todo('should be tested with all chain functions');

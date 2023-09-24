@@ -12,6 +12,7 @@ enum PromiseState {
 function unwrap<T>(
   value: T | PromiseLike<T>,
   destination: (value: T) => void,
+  error: (error: any) => void,
 ): void {
   if (value === undefined) {
     destination(value);
@@ -19,7 +20,7 @@ function unwrap<T>(
   }
 
   if ((value as PromiseLike<T>).then) {
-    (value as PromiseLike<T>).then(destination);
+    (value as PromiseLike<T>).then(destination, error);
     return;
   }
 
@@ -47,8 +48,8 @@ class PromiseMock<T> {
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
-    return new ActivePromiseMock<TResult1>(
-      (resolveNext: (value: TResult1) => void, rejectNext: (reason: any) => void) => {
+    return new ActivePromiseMock<TResult1 | TResult2>(
+      (resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
           this.defer(() => this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected));
         } else {
@@ -112,7 +113,7 @@ class PromiseMock<T> {
   }
 
   private settleThen<TResult1,TResult2>(
-    resolveNext: (value: TResult1) => void,
+    resolveNext: (value: TResult1 | TResult2) => void,
     rejectNext: (reason: any) => void,
     onfulfilled: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected: RejectionHandler<TResult2> | undefined | null,
@@ -121,14 +122,18 @@ class PromiseMock<T> {
       if (onfulfilled) {
         try {
           const resultValue = onfulfilled(this.value!);
-          unwrap(resultValue, resolveNext);
+          unwrap(resultValue, resolveNext, rejectNext);
         } catch (error: any) {
           rejectNext(error);
         }
       }
     } else {
-      rejectNext(this.reason);
-      onrejected && onrejected(this.reason);
+      if(onrejected) {
+        const result = onrejected(this.reason);
+        unwrap(result, resolveNext, rejectNext);
+      } else {
+        rejectNext(this.reason);
+      }
     }
   }
 
@@ -141,7 +146,7 @@ class PromiseMock<T> {
       if (onrejected) {
         try {
           const chainValue = onrejected(this.reason);
-          unwrap(chainValue, resolveNext);
+          unwrap(chainValue, resolveNext, rejectNext);
         } catch (error) {
           rejectNext(error);
         }
@@ -208,7 +213,7 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
     super();
     const resolve = (value: T | PromiseLike<T>) => {
       this.status = PromiseState.Fulfilled;
-      unwrap(value, (unwrapped: T) => this.value = unwrapped);
+      unwrap(value, (unwrapped: T) => this.value = unwrapped, reject);
       this.runDeferred();
     };
 
