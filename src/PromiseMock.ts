@@ -220,6 +220,18 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
   }
 }
 
+class PendingPromiseMock<T> extends PromiseMock<T> {
+  constructor(value: T) {
+    super();
+    this.value = value;
+  }
+
+  resolve() {
+    this.status = PromiseState.Fulfilled;
+    this.runDeferred();
+  }
+}
+
 class ResolvedPromiseMock<T> extends PromiseMock<T> {
   constructor(value: T) {
     super();
@@ -264,4 +276,9 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
   }
 }
 
-export { PromiseMock, ActivePromiseMock, PassivePromiseMock };
+export {
+  PromiseMock,
+  ActivePromiseMock,
+  PassivePromiseMock,
+  PendingPromiseMock,
+};
