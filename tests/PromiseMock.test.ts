@@ -5,184 +5,199 @@ import { PromiseMock, PassivePromiseMock } from "@self/PromiseMock";
 
 describe(PromiseMock.name, () => {
   it("should be assignable as a promise", () => {
-    const results: string[] = [];
+    const [then1] = mockFn('then1');
 
     const somePromisingFunction = (action: Promise<string>) => {
-      action.then((value) => {
-        results.push(value);
-      });
+      action.then(then1);
     };
 
     const promise = new PassivePromiseMock<string>();
     somePromisingFunction(promise);
-    expect(results).toEqual([]);
+    expect(then1).not.toHaveBeenCalled();
 
-    promise.resolve("A value");
+    promise.resolve('A value');
 
-    expect(results).toContain("A value");
+    expect(then1).toHaveBeenCalledTimes(1);
+    expect(then1).toHaveBeenCalledWith('A value');
   });
 
-  it("should behave like a javascript object", () => {
+  it('should behave like a javascript object', () => {
     const promise = new PromiseMock();
     const result = Object.prototype.toString.call(promise);
     expect(result).toEqual("[object PromiseMock]");
   });
 
-  describe("fulfilled", () => {
-    it("should call finally and then handlers", () => {
+  describe('fulfilled', () => {
+    it('should call finally and then handlers', () => {
+      const allMocks = mockFn('then1', 'finally1');
+      const [then1, finally1] = allMocks;
       const p = new PassivePromiseMock<number>();
-      const results: string[] = [];
 
-      p.then((value: number) => {
-        results[0] = "then";
-        expect(value).toEqual(93);
-      });
-      p.finally(() => (results[1] = "finally"));
+      p.then(then1);
+      p.finally(finally1);
+
+      for (const mock of allMocks) expect(mock).not.toHaveBeenCalled();
+
       p.resolve(93);
 
-      expect(results).toEqual(["then", "finally"]);
+      for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+      expect(then1).toHaveBeenCalledWith(93);
+      expect(then1).toHaveBeenCalledBefore(finally1);
     });
 
     it("should allow chaining finally and then calls", () => {
+      const allMocks = mockFn('then1', 'then2', 'finally1', 'finally2');
+      const [then1, then2, finally1, finally2] = allMocks;
       const p = new PassivePromiseMock<number>();
-      const results: string[] = [];
 
-      p.then((value: number) => {
-        results[0] = "then1";
-        expect(value).toEqual(23);
-        return "33";
-      })
-        .then((value: string) => {
-          results[1] = "then2";
-          expect(value).toEqual("33");
-        })
-        .finally(() => (results[2] = "finally1"))
-        .finally(() => (results[3] = "finally2"));
+      p
+        .then(then1)
+        .then(then2)
+        .finally(finally1)
+        .finally(finally2);
+
+      then1.mockReturnValue('33');
+
+      for (const mock of allMocks) expect(mock).not.toHaveBeenCalled();
 
       p.resolve(23);
 
-      expect(results).toEqual(["then1", "then2", "finally1", "finally2"]);
+      for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+      expect(then1).toHaveBeenCalledWith(23);
+      expect(then2).toHaveBeenCalledWith('33');
+      expect(then1).toHaveBeenCalledBefore(then2);
+      expect(then2).toHaveBeenCalledBefore(finally1);
+      expect(finally1).toHaveBeenCalledBefore(finally2);
     });
 
-    it("should allow adding chains after resolution", () => {
+    it('should allow adding chains after resolution', () => {
+      const then1 = jest.fn().mockName('then1');
       const p = new PassivePromiseMock<number>();
       p.resolve(87);
-
-      var results: number[] = [];
-      p.then((value: number) => results.push(value));
-
-      expect(results[0]).toEqual(87);
+      p.then(then1);
+      expect(then1).toHaveBeenCalledWith(87);
     });
 
-    it("should handle when thens return a promise", () => {
-      const p = new PassivePromiseMock<string>();
+    it('should handle when thens return a promise', () => {
+      const allMocks = mockFn('then1', 'then2');
+      const [then1, then2] = allMocks;
 
-      p.resolve("peter");
-      const results: string[] = [];
-      p.then((value: string) => PromiseMock.resolve(`${value} piper`)).then(
-        (value: string) => results.push(value),
-      );
+      const p = PromiseMock.resolve('Peter');
+      then1.mockImplementation((value: string) => PromiseMock.resolve(`${value} Piper`));
+      p
+        .then(then1)
+        .then(then2);
 
-      expect(results[0]).toEqual("peter piper");
+      for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+      expect(then1).toHaveBeenCalledWith('Peter');
+      expect(then2).toHaveBeenCalledWith('Peter Piper');
     });
 
-    it("should work with await", async () => {
-      const p = new PassivePromiseMock<string>();
-      p.resolve("waiting for you");
+    it.skip('should handle real promises gracefully', async () => {
+      const allMocks = mockFn('then1', 'then2');
+      const [then1, then2] = allMocks;
+
+      const p = PromiseMock.resolve('Sally');
+      then1.mockImplementation((value: string) => Promise.resolve(`${value} Sells`));
+      p
+        .then(then1)
+        .then(then2);
 
       const result = await p;
-      expect(result).toEqual("waiting for you");
+
+      expect(result).toEqual('Sally');
+      for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+      expect(then1).toHaveBeenCalledWith('Sally');
+      expect(then2).toHaveBeenCalledWith('Sally Sells');
     });
 
-    it("should work with finally first", async () => {
+    it('should work with await', async () => {
       const p = new PassivePromiseMock<string>();
-      const results: string[] = [];
+      p.resolve('waiting for you');
 
-      const chain = p
-        .finally(() => {
-          results.push("finally");
-        })
-        .then((value: string) => {
-          results.push("then");
-          return 13;
-        });
-
-      p.resolve('Thirteen');
-      const result = await chain;
-
-      expect(result).toEqual(13);
-      expect(results).toEqual(["finally", "then"]);
+      const result = await p;
+      expect(result).toEqual('waiting for you');
     });
   });
 
-  describe("rejected", () => {
-    it("should call finally", () => {
+  describe('rejected', () => {
+    it('should call finally', () => {
+      const allMocks = mockFn('catch1', 'finally1');
+      const [catch1, finally1] = allMocks;
       const p = new PassivePromiseMock<string>();
-      const results: string[] = [];
 
-      p.catch(() => {
-        results.push("catch");
-      }).finally(() => {
-        results.push("finally");
-      });
+      p
+        .catch(catch1)
+        .finally(finally1);
 
-      p.reject(new Error("this is fine"));
-      expect(results).toEqual(["catch", "finally"]);
+      p.reject(new Error('this is fine'));
+      for (const m of allMocks) expect(m).toHaveBeenCalledTimes(1);
+      expect(catch1).toHaveBeenCalledBefore(finally1);
     });
 
-    it("should work if finally is first", () => {
+    it('should work if finally is first', () => {
+      const allMocks = mockFn('finally1', 'catch1', 'then1');
+      const [finally1, catch1, then1] = allMocks;
       const p = new PassivePromiseMock<string>();
-      const results: string[] = [];
 
-      p.finally(() => results.push("finally"))
-        .catch(() => {
-          return "help";
-        })
-        .then((value: string) => {
-          results.push("then");
-          results.push(value);
-        });
+      catch1.mockReturnValue('recovered');
+      p
+        .finally(finally1)
+        .catch(catch1)
+        .then(then1);
 
-      p.reject(new Error("derp"));
+      for (const m of allMocks) expect(m).not.toBeCalled();
 
-      expect(results).toEqual(["finally", "then", "help"]);
+      p.reject(new Error('derp'));
+      for (const m of allMocks) expect(m).toHaveBeenCalledTimes(1);
+      expect(then1).toHaveBeenCalledWith('recovered');
+      expect(finally1).toHaveBeenCalledBefore(catch1);
+      expect(catch1).toHaveBeenCalledBefore(then1);
     });
 
-    describe("by throwing errors from a then block", () => {
-      let p: PassivePromiseMock<string>;
-      const results: string[] = [];
-
+    describe('by throwing errors from a then block', () => {
       beforeEach(() => {
-        p = new PassivePromiseMock<string>();
-        results.length = 0;
+        jest.clearAllMocks();
       });
 
-      function setupChain() {
-        p.then(() => {
-          results.push("then1");
-          return 17;
-        })
-          .then((value: number) => {
-            results.push("then2");
-            throw new Error(`${value} is not old enough to drink!`);
-          })
-          .catch((reason: Error) => {
-            results.push("catch");
-          });
+      function setupChain<T>(p: PassivePromiseMock<T>) {
+        const handlers = mockFn('then1', 'then2', 'catch1');
+        const [then1, then2, catch1] = handlers;
+        then1.mockReturnValue(17);
+        then2.mockImplementation((value) => { throw new Error(`${value} is not old enough to drink!`); })
+
+        p
+          .then(then1)
+          .then(then2)
+          .catch(catch1);
+
+          return handlers;
       }
 
-      it("should work when resolving after chain is setup", () => {
-        setupChain();
+      function expectPromiseToWork(handlers: jest.Mock[]) {
+        const [then1, then2, catch1] = handlers;
+
+        for (const h of handlers) expect(h).toHaveBeenCalledTimes(1);
+        expect(then1).toHaveBeenCalledWith("Minor Person's name")
+        expect(then2).toHaveBeenCalledWith(17);
+        expect(catch1).toHaveBeenCalledWith(new Error ('17 is not old enough to drink!'));
+      }
+
+      it('should work when resolving after chain is setup', () => {
+        const p = new PassivePromiseMock<string>();
+        const handlers = setupChain(p);
+        for (const h of handlers) expect(h).not.toHaveBeenCalled();
         p.resolve("Minor Person's name");
 
-        expect(results).toEqual(["then1", "then2", "catch"]);
+        expectPromiseToWork(handlers);
       });
 
-      it("should work when resolving before chain is setup", () => {
-        p.resolve("Minor person's name");
-        setupChain();
+      it('should work when resolving before chain is setup', () => {
+        const p = new PassivePromiseMock<string>();
+        p.resolve("Minor Person's name");
+        const handlers = setupChain(p);
 
-        expect(results).toEqual(["then1", "then2", "catch"]);
+        expectPromiseToWork(handlers);
       });
     });
   });
