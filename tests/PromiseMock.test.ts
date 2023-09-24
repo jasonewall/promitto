@@ -244,7 +244,7 @@ describe(PromiseMock.name, () => {
     /**
      * Application code could end up resolving promises to core async promises which would still
      * make our tests rely on an arbitrary number of await Promise.resolve() calls.
-     * So provide a settled promise that resolves to the original promise value only when all other
+     * So we provide a settled promise that resolves to the original promise value only when all other
      * promises in the chain have settled.
      */
     it('should provide a promise that only resolves once the whole chain resolves', async () => {
