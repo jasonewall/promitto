@@ -106,7 +106,7 @@ describe(PromiseMock.name, () => {
           return 13;
         });
 
-      p.resolve("Thirteen");
+      p.resolve('Thirteen');
       const result = await chain;
 
       expect(result).toEqual(13);

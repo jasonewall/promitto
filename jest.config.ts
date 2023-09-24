@@ -6,6 +6,7 @@ const config: JestConfigWithTsJest = {
   moduleDirectories: ["node_modules", "<rootDir>"],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths),
   testMatch: ["<rootDir>/tests/**/*.[jt]s"],
+  testPathIgnorePatterns: ["<rootDir>/tests/utils/*"],
   transform: {
     "^.+\\.(t|j)s$": "@swc/jest",
   },

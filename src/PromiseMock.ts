@@ -50,9 +50,9 @@ class PromiseMock<T> {
     return new ActivePromiseMock<TResult1>(
       (resolveNext: (value: TResult1) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
-          this.defer(() => this.settleThen(resolveNext, rejectNext, onfulfilled));
+          this.defer(() => this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected));
         } else {
-          this.settleThen(resolveNext, rejectNext, onfulfilled);
+          this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected);
         }
       },
     );
@@ -88,7 +88,9 @@ class PromiseMock<T> {
           });
 
           this.defer(() => {
-            rejectNext(this.reason);
+            if (this.status === PromiseState.Rejected) {
+              rejectNext(this.reason);
+            }
           });
         } else {
           onfinally && onfinally();
@@ -109,27 +111,31 @@ class PromiseMock<T> {
     this.deferredActions.push(action);
   }
 
-  private settleThen<TResult>(
-    resolve: (value: TResult) => void,
-    reject: (reason: any) => void,
-    onfulfilled?: FulfillmentHandler<T, TResult> | undefined | null,
+  private settleThen<TResult1,TResult2>(
+    resolveNext: (value: TResult1) => void,
+    rejectNext: (reason: any) => void,
+    onfulfilled: FulfillmentHandler<T, TResult1> | undefined | null,
+    onrejected: RejectionHandler<TResult2> | undefined | null,
   ) {
-    if (this.status !== PromiseState.Fulfilled) return;
-
-    if (onfulfilled) {
-      try {
-        const resultValue = onfulfilled(this.value!);
-        unwrap(resultValue, resolve);
-      } catch (error: any) {
-        reject(error);
+    if (this.status === PromiseState.Fulfilled) {
+      if (onfulfilled) {
+        try {
+          const resultValue = onfulfilled(this.value!);
+          unwrap(resultValue, resolveNext);
+        } catch (error: any) {
+          rejectNext(error);
+        }
       }
+    } else {
+      rejectNext(this.reason);
+      onrejected && onrejected(this.reason);
     }
   }
 
   private settleCatch<TResult>(
     resolveNext: (value: T | TResult) => void,
     rejectNext: (reason: any) => void,
-    onrejected?: RejectionHandler<TResult> | undefined | null,
+    onrejected: RejectionHandler<TResult> | undefined | null,
   ) {
     if (this.status === PromiseState.Rejected) {
       if (onrejected) {
