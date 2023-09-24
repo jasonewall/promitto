@@ -1,7 +1,7 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
 type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
-type DeferredAction = () => void;
+type Action = () => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -42,7 +42,7 @@ class PromiseMock<T> {
 
   protected reason?: any;
 
-  protected deferredActions: (() => void)[] = [];
+  protected deferredActions: Action[] = [];
 
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
@@ -84,11 +84,11 @@ class PromiseMock<T> {
     for (const action of this.deferredActions) action();
   }
 
-  private defer(action: DeferredAction) {
+  private defer(action: Action) {
     this.deferredActions.push(action);
   }
 
-  private onSettled(action: () => void) {
+  private onSettled(action: Action) {
     if (this.status === PromiseState.Pending) {
       this.defer(action);
     } else {
