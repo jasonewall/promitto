@@ -50,11 +50,7 @@ class PromiseMock<T> {
   ): Promise<TResult1 | TResult2> {
     return new ActivePromiseMock<TResult1 | TResult2>(
       (resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
-        if (this.status === PromiseState.Pending) {
-          this.defer(() => this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected));
-        } else {
-          this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected);
-        }
+        this.onSettled(() => this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected));
       },
     );
   }
@@ -67,11 +63,7 @@ class PromiseMock<T> {
         resolveNext: (value: T | TResult) => void,
         rejectNext: (reason: any) => void,
       ) => {
-        if (this.status === PromiseState.Pending) {
-          this.defer(() => this.settleCatch(resolveNext, rejectNext, onrejected));
-        } else {
-          this.settleCatch(resolveNext, rejectNext, onrejected);
-        }
+        this.onSettled(() => this.settleCatch(resolveNext, rejectNext, onrejected));
       },
     );
   }
@@ -79,13 +71,7 @@ class PromiseMock<T> {
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
     return new ActivePromiseMock<T>(
       (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
-        if (this.status === PromiseState.Pending) {
-          this.defer(() => {
-            this.settleFinally(resolveNext, rejectNext, onfinally);
-          });
-        } else {
-          this.settleFinally(resolveNext, rejectNext, onfinally);
-        }
+        this.onSettled(() => this.settleFinally(resolveNext, rejectNext, onfinally));
       },
     );
   }
@@ -100,6 +86,14 @@ class PromiseMock<T> {
 
   private defer(action: DeferredAction) {
     this.deferredActions.push(action);
+  }
+
+  private onSettled(action: () => void) {
+    if (this.status === PromiseState.Pending) {
+      this.defer(action);
+    } else {
+      action();
+    }
   }
 
   private settleThen<TResult1,TResult2>(

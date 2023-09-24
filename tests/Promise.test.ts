@@ -24,7 +24,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
   describe(TestPromise.name, () => {
     describe('#then', () => {
       describe('when resolved', () => {
-        it('should call fulfilled handlers', async () => {
+        it('should call fulfillment handlers', async () => {
           const then1 = jest.fn();
           then1.mockReturnValue(16);
 
@@ -129,21 +129,22 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         });
 
         it('should allow finally to be interjected anywhere', async () => {
-          const [then1, finally1] = mockFn('then1', 'finally1');
-          const [then2, finally2] = mockFn('then2', 'finally2');
+          const [then1, finally1, onrejected1] = mockFn('then1', 'finally1', 'onrejected1');
+          const [then2, finally2, onrejected2] = mockFn('then2', 'finally2', 'onrejected2');
           then1.mockReturnValue(14);
           then2.mockReturnValue(18);
 
           const chain = TestPromise.resolve('Start')
-            .then(then1)
+            .then(then1, onrejected1)
             .finally(finally1)
-            .then(then2)
+            .then(then2, onrejected2)
             .finally(finally2);
 
           const result = await chain;
 
           const allMocks = [then1, then2, finally1, finally2];
           for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          for (const mock of [onrejected1, onrejected2]) expect(mock).not.toHaveBeenCalled();
           expect(result).toEqual(18);
           expect(then1).toHaveBeenCalledWith('Start');
           expect(then1).toHaveBeenCalledBefore(finally1);
@@ -213,54 +214,92 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
     });
 
-    describe('when rejected', () => {
-      it('should switch to resolved if catch does not re-reject', async () => {
-        const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
+    describe('#catch', () => {
+      describe('when resolved', () => {
+        it('should not call catch handlers', async () => {
+          const [catch1, then1] = mockFn('catch1', 'then1')
+          then1.mockReturnValue(['Pepper']);
 
-        const chain = TestPromise.reject(new Error("This is fine"))
-          .catch(catch1)
-          .then(then1)
-          .catch(catch2);
+          const chain = TestPromise.resolve('Banana')
+            .catch(catch1)
+            .then(then1);
 
-        await chain;
-        expect(catch1).toHaveBeenCalledTimes(1);
-        expect(then1).toHaveBeenCalledTimes(1);
-        expect(catch2).not.toHaveBeenCalled();
-        expect(catch1).toHaveBeenCalledBefore(then1);
+          const result = await chain;
+
+          expect(result).toEqual(['Pepper']);
+          expect(catch1).not.toHaveBeenCalled();
+          expect(then1).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledWith('Banana');
+        });
       });
 
-      it('should skip then handlers until caught', async () => {
-        const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
-        catch1.mockImplementation(() => {
-          throw new Error('this is not fine');
+      describe('when rejected', () => {
+        it('should switch to resolved if catch does not re-reject', async () => {
+          const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
+
+          const chain = TestPromise.reject(new Error("This is fine"))
+            .catch(catch1)
+            .then(then1)
+            .catch(catch2);
+
+          await chain;
+          expect(catch1).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledTimes(1);
+          expect(catch2).not.toHaveBeenCalled();
+          expect(catch1).toHaveBeenCalledBefore(then1);
         });
 
-        const chain = Promise.reject(new Error("this is still fine"))
-          .catch(catch1)
-          .then(then1)
-          .catch(catch2)
+        it('should skip then handlers until caught', async () => {
+          const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
+          catch1.mockImplementation(() => {
+            throw new Error('this is not fine');
+          });
 
-        await chain;
-        expect(catch1).toHaveBeenCalledTimes(1);
-        expect(then1).not.toHaveBeenCalled();
-        expect(catch2).toHaveBeenCalledTimes(1);
-        expect(catch1).toHaveBeenCalledBefore(catch2);
-      });
+          const chain = Promise.reject(new Error("this is still fine"))
+            .catch(catch1)
+            .then(then1)
+            .catch(catch2)
 
-      it('should call handlers in the order that they are added', async () => {
-        const [finally1, catch1, then1] = mockFn('finally1', 'catch1', 'then1');
-        const chain = Promise.reject(new Error("This is fine"))
-          .finally(finally1)
-          .catch(catch1)
-          .then(then1)
-
-        await chain;
-
-        [finally1, catch1, then1].forEach((value) => {
-          expect(value).toHaveBeenCalledTimes(1);
+          await chain;
+          expect(catch1).toHaveBeenCalledTimes(1);
+          expect(catch1).toHaveBeenCalledWith(new Error('this is still fine'));
+          expect(then1).not.toHaveBeenCalled();
+          expect(catch2).toHaveBeenCalledTimes(1);
+          expect(catch1).toHaveBeenCalledBefore(catch2);
         });
-        expect(finally1).toHaveBeenCalledBefore(catch1);
-        expect(catch1).toHaveBeenCalledBefore(then1);
+
+        it('should count returning a new rejected promise as a re-raise', async () => {
+          const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
+          catch1.mockReturnValue(TestPromise.reject(new Error('Are you mocking me?')));
+
+          const chain = TestPromise.reject(new Error('We are not starting of on a good note'))
+            .catch(catch1)
+            .then(then1)
+            .catch(catch2);
+
+          await chain;
+          for (const mock of [catch1, catch2]) expect(mock).toHaveBeenCalledTimes(1);
+          expect(then1).not.toHaveBeenCalled();
+          expect(catch1).toHaveBeenCalledWith(new Error('We are not starting of on a good note'));
+          expect(catch1).toHaveBeenCalledBefore(catch2);
+          expect(catch2).toHaveBeenCalledWith(new Error('Are you mocking me?'));
+        });
+
+        it('should call handlers in the order that they are added', async () => {
+          const [finally1, catch1, then1] = mockFn('finally1', 'catch1', 'then1');
+          const chain = Promise.reject(new Error("This is fine"))
+            .finally(finally1)
+            .catch(catch1)
+            .then(then1)
+
+          await chain;
+
+          [finally1, catch1, then1].forEach((value) => {
+            expect(value).toHaveBeenCalledTimes(1);
+          });
+          expect(finally1).toHaveBeenCalledBefore(catch1);
+          expect(catch1).toHaveBeenCalledBefore(then1);
+        });
       });
     });
   });
