@@ -1,4 +1,6 @@
 import { describe } from "@jest/globals";
+import { mockFn } from './utils/assorted';
+import './utils/invocationCallOrderMatcher';
 import { PromiseMock, PassivePromiseMock } from "@self/PromiseMock";
 
 describe(PromiseMock.name, () => {
@@ -76,7 +78,6 @@ describe(PromiseMock.name, () => {
       const p = new PassivePromiseMock<string>();
 
       p.resolve("peter");
-
       const results: string[] = [];
       p.then((value: string) => PromiseMock.resolve(`${value} piper`)).then(
         (value: string) => results.push(value),
@@ -187,56 +188,44 @@ describe(PromiseMock.name, () => {
   });
 
   describe('adding multiple handlers to the same promise (not chaining)', () => {
-    const buildChain = (preResolution?: (promise: PassivePromiseMock<string>) => void): [PassivePromiseMock<string>, string[]] => {
-      const p = new PassivePromiseMock<string>();
-      if (preResolution) {
-        preResolution(p);
-      }
-      const results: string[] = [];
-      p.then((value: string) => results.push(value));
-      p.catch((error: Error) => results.push(error.message));
-      p.finally(() => results.push('finally'));
-      return [p, results];
+    const attachCallbacks = <T>(p: Promise<T>) => {
+      const [then1, onrejected1, catch1, finally1] = mockFn('then1', 'onrejected1', 'catch1', 'finally1');
+      p.then(then1, onrejected1);
+      p.catch(catch1);
+      p.finally(finally1);
+      return { then1, onrejected1, catch1, finally1 };
     }
 
-    it('should only call then and finally when resolved', () => {
-      const [p, results] = buildChain();
+    it('should only call then and finally when resolved', async () => {
+      const p = new PassivePromiseMock<string>();
+      const { then1, onrejected1, catch1, finally1 }= attachCallbacks(p);
+
       p.resolve('Success!');
-      expect(results).toEqual([
-        'Success!',
-        'finally',
-      ]);
+      const result = await p;
+
+      expect(result).toEqual('Success!');
+      for (const mock of [then1, finally1]) expect(mock).toHaveBeenCalledTimes(1);
+      for (const mock of [onrejected1, catch1]) expect(mock).not.toHaveBeenCalled();
+      expect(then1).toHaveBeenCalledWith('Success!');
+      expect(then1).toHaveBeenCalledBefore(finally1);
     });
 
-    it('should only call then and finally if pre-resolved', () => {
-      const [p, results] = buildChain((p: PassivePromiseMock<string>) => {
-        p.resolve('Pre-resolved!');
-      });
+    it('should only call catch and finally when rejected', async () => {
+      const p = new PassivePromiseMock<string>();
+      const { then1, onrejected1, catch1, finally1 }= attachCallbacks(p);
 
-      expect(results).toEqual([
-        'Pre-resolved!',
-        'finally',
-      ]);
-    });
-
-    it('should only call catch and finally when rejected', () => {
-      const [p, results] = buildChain();
       p.reject(new Error('Rejected!'));
-      expect(results).toEqual([
-        'Rejected!',
-        'finally',
-      ]);
-    });
+      try {
+        await p;
+      } catch (error: any) {
+        expect(error).toEqual(new Error('Rejected!'));
+      }
 
-    it('should only call catch and finally if pre-resolved', () => {
-      const [p, results] = buildChain((p: PassivePromiseMock<string>) => {
-        p.reject(new Error('Pre-rejected!'));
-      });
-
-      expect(results).toEqual([
-        'Pre-rejected!',
-        'finally',
-      ]);
+      expect(then1).not.toHaveBeenCalled();
+      for (const mock of [onrejected1, catch1, finally1]) expect(mock).toBeCalledTimes(1);
+      for (const mock of [onrejected1, catch1]) expect(mock).toBeCalledWith(new Error('Rejected!'));
+      expect(onrejected1).toHaveBeenCalledBefore(catch1);
+      expect(catch1).toHaveBeenCalledBefore(finally1);
     });
   });
 

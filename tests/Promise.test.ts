@@ -1,5 +1,6 @@
 import { describe } from "@jest/globals";
 import './utils/invocationCallOrderMatcher';
+import { mockFn } from './utils/assorted';
 import { PromiseExecutor, ActivePromiseMock } from '@self/PromiseMock';
 
 interface TestPromiseConstructor {
@@ -13,12 +14,6 @@ interface TestPromiseConstructor {
 const promiseTypes: TestPromiseConstructor[] = [];
 promiseTypes.push(ActivePromiseMock);
 promiseTypes.push(Promise);
-
-function mockFn(...fns: string[]): jest.Mock[] {
-  const results: jest.Mock[] = [];
-  for(const fnName of fns) results.push(jest.fn().mockName(fnName));
-  return results;
-}
 
 promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
   describe(TestPromise.name, () => {
@@ -300,6 +295,48 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           expect(finally1).toHaveBeenCalledBefore(catch1);
           expect(catch1).toHaveBeenCalledBefore(then1);
         });
+      });
+    });
+
+    describe('adding multiple handlers to the same promise (not chaining)', () => {
+      const attachCallbacks = <T>(p: Promise<T>) => {
+        const [then1, catch1, finally1, onrejected1] = mockFn('then1', 'catch1', 'finally1', 'onrejected1');
+        p.then(then1, onrejected1);
+        p.catch(catch1);
+        p.finally(finally1)
+          .catch(() => 'ok'); // prevent core promise from raising an unhandled rejection with jest
+
+        return { then1, catch1, finally1, onrejected1 }
+      }
+
+      it('should only call then and finally when resolve', async () => {
+        const p = TestPromise.resolve('Success!');
+        const { then1, catch1, finally1, onrejected1 } = attachCallbacks(p);
+
+        const value = await p;
+
+        expect(value).toEqual('Success!');
+        for(const mock of [then1, finally1]) expect(mock).toHaveBeenCalledTimes(1);
+        for(const mock of [onrejected1, catch1]) expect(mock).not.toHaveBeenCalled();
+        expect(then1).toHaveBeenCalledWith('Success!');
+        expect(then1).toHaveBeenCalledBefore(finally1);
+      });
+
+      it('should only call catch and finally when rejected', async () => {
+        const p = TestPromise.reject(new Error('oh no!'));
+        const { then1, catch1, finally1, onrejected1 } = attachCallbacks(p);
+
+        try {
+          await p;
+        } catch (error: any) {
+          expect(error).toEqual(new Error('oh no!'));
+        }
+
+        expect(then1).not.toHaveBeenCalled();
+        for (const mock of [catch1, finally1, onrejected1]) expect(mock).toHaveBeenCalledTimes(1);
+        for (const mock of [catch1, onrejected1]) expect(mock).toHaveBeenCalledWith(new Error('oh no!'));
+        expect(onrejected1).toHaveBeenCalledBefore(catch1);
+        expect(finally1).toHaveBeenCalledAfter(catch1);
       });
     });
   });
