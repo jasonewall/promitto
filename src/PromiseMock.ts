@@ -2,7 +2,10 @@ type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
 type Action = () => void;
 
-export type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
+export type PromiseExecutor<T> = (
+  resolve: (value: T | PromiseLike<T>) => void,
+  reject: (reason?: any) => void,
+) => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -52,26 +55,41 @@ class PromiseMock<T> {
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
-    return this.fork((resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
-      this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
-    });
+    return this.fork(
+      (
+        resolveNext: (value: TResult1 | TResult2) => void,
+        rejectNext: (reason: any) => void,
+      ) => {
+        this.onSettled(() =>
+          this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected),
+        );
+      },
+    );
   }
 
   catch<TResult = never>(
     onrejected?: RejectionHandler<TResult> | undefined | null,
   ): Promise<T | TResult> {
-    return this.fork((
-      resolveNext: (value: T | TResult) => void,
-      rejectNext: (reason: any) => void,
-    ) => {
-      this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
-    });
+    return this.fork(
+      (
+        resolveNext: (value: T | TResult) => void,
+        rejectNext: (reason: any) => void,
+      ) => {
+        this.onSettled(() =>
+          this.completeCatch(resolveNext, rejectNext, onrejected),
+        );
+      },
+    );
   }
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-    return this.fork((resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
-      this.onSettled(() => this.completeFinally(resolveNext, rejectNext, onfinally));
-    });
+    return this.fork(
+      (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
+        this.onSettled(() =>
+          this.completeFinally(resolveNext, rejectNext, onfinally),
+        );
+      },
+    );
   }
 
   async settled(): Promise<T> {
@@ -108,7 +126,7 @@ class PromiseMock<T> {
     }
   }
 
-  private completeThen<TResult1,TResult2>(
+  private completeThen<TResult1, TResult2>(
     resolveNext: (value: TResult1 | TResult2) => void,
     rejectNext: (reason: any) => void,
     onfulfilled: FulfillmentHandler<T, TResult1> | undefined | null,
@@ -124,7 +142,7 @@ class PromiseMock<T> {
         }
       }
     } else {
-      if(onrejected) {
+      if (onrejected) {
         const result = onrejected(this.reason);
         unwrap(result, resolveNext, rejectNext);
       } else {
@@ -224,13 +242,11 @@ class RejectedPromiseMock<T> extends PromiseMock<T> {
  * to the promise chain.
  */
 class ActivePromiseMock<T> extends PromiseMock<T> {
-  constructor(
-    executor: PromiseExecutor<T>,
-  ) {
+  constructor(executor: PromiseExecutor<T>) {
     super();
     const resolve = (value: T | PromiseLike<T>) => {
       this.status = PromiseState.Fulfilled;
-      unwrap(value, (unwrapped: T) => this.value = unwrapped, reject);
+      unwrap(value, (unwrapped: T) => (this.value = unwrapped), reject);
       this.runDeferred();
     };
 
