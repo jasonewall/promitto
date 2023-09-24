@@ -26,78 +26,79 @@ function mockFn(...fns: string[]): ReturnType<typeof jest.fn>[] {
 
 promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
   describe(TestPromise.name, () => {
-    describe('then', () => {
-      it('should call success handlers if promise is rejected', async () => {
-        const then1 = jest.fn();
-        then1.mockReturnValue(16);
+    describe('#then', () => {
+      describe('when rejected', () => {
+        it('should call success handlers if promise is rejected', async () => {
+          const then1 = jest.fn();
+          then1.mockReturnValue(16);
 
-        const chain = TestPromise.resolve(15)
-          .then(then1);
+          const chain = TestPromise.resolve(15)
+            .then(then1);
 
-        const result = await chain;
-        expect(then1).toHaveBeenCalledWith(15);
-        expect(result).toEqual(16);
-      });
+          const result = await chain;
+          expect(then1).toHaveBeenCalledWith(15);
+          expect(result).toEqual(16);
+        });
 
-      it('should not call success handlers if promise is rejected', async () => {
-        const then1 = jest.fn();
-        const chain = TestPromise.reject(new Error('Rejected!'))
-          .then(then1);
+        it('should not call success handlers if promise is rejected', async () => {
+          const then1 = jest.fn();
+          const chain = TestPromise.reject(new Error('Rejected!'))
+            .then(then1);
 
-        try {
+          try {
+            await chain;
+          } catch(error: any) {
+            // swallow
+          }
+
+          expect(then1).not.toHaveBeenCalled();
+        });
+
+        it('should call the rejection handler if rejected', async () => {
+          const [then1, onrejected] = mockFn('then1', 'onrejected');
+          onrejected.mockImplementation(() => 'ok');
+          const chain = TestPromise.reject(new Error('Rejected!'))
+            .then(then1, onrejected);
+
           await chain;
-        } catch(error: any) {
-          // swallow
-        }
+          expect(then1).not.toHaveBeenCalled();
+          expect(onrejected).toHaveBeenCalledTimes(1);
+        });
 
-        expect(then1).not.toHaveBeenCalled();
+        it('should still be an error if the reject handler raises an error', async () => {
+          const [then1, onrejected] = mockFn('then1', 'onrejected');
+          onrejected.mockImplementation(() => { throw new Error('not ok'); });
+          const chain = TestPromise.reject(new Error('Rejected!'))
+            .then(then1, onrejected);
+
+          try {
+            await chain;
+          } catch(error: any) {
+            expect(error.message).toEqual('not ok');
+          }
+          expect(then1).not.toHaveBeenCalled();
+          expect(onrejected).toHaveBeenCalledTimes(1);
+        });
+
+        it('should be an error if the reject handler returns a rejected promise', async () => {
+          const [then1, onrejected] = mockFn('then1', 'onrejected');
+          onrejected.mockImplementation(() => TestPromise.reject(new Error('not ok')));
+          const chain = TestPromise.reject(new Error('Rejected!'))
+            .then(then1, onrejected);
+
+          try {
+            await chain;
+          } catch(error: any) {
+            expect(error.message).toEqual('not ok');
+          }
+
+          expect(then1).not.toHaveBeenCalled();
+          expect(onrejected).toHaveBeenCalledTimes(1);
+        });
       });
-
-      it('should call the rejection handler if rejected', async () => {
-        const [then1, onrejected] = mockFn('then1', 'onrejected');
-        onrejected.mockImplementation(() => 'ok');
-        const chain = TestPromise.reject(new Error('Rejected!'))
-          .then(then1, onrejected);
-
-        await chain;
-        expect(then1).not.toHaveBeenCalled();
-        expect(onrejected).toHaveBeenCalledTimes(1);
-      });
-
-      it('should still be an error if the reject handler raises an error', async () => {
-        const [then1, onrejected] = mockFn('then1', 'onrejected');
-        onrejected.mockImplementation(() => { throw new Error('not ok'); });
-        const chain = TestPromise.reject(new Error('Rejected!'))
-          .then(then1, onrejected);
-
-        try {
-          await chain;
-        } catch(error: any) {
-          expect(error.message).toEqual('not ok');
-        }
-        expect(then1).not.toHaveBeenCalled();
-        expect(onrejected).toHaveBeenCalledTimes(1);
-      });
-
-      it('should be an error if the reject handler returns a rejected promise', async () => {
-        const [then1, onrejected] = mockFn('then1', 'onrejected');
-        onrejected.mockImplementation(() => TestPromise.reject(new Error('not ok')));
-        const chain = TestPromise.reject(new Error('Rejected!'))
-          .then(then1, onrejected);
-
-        try {
-          await chain;
-        } catch(error: any) {
-          expect(error.message).toEqual('not ok');
-        }
-
-        expect(then1).not.toHaveBeenCalled();
-        expect(onrejected).toHaveBeenCalledTimes(1);
-      });
-
     });
 
-    describe("rejected", () => {
+    describe('when rejected', () => {
       it('should switch to resolved if catch does not re-reject', async () => {
         const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
 
