@@ -1,6 +1,6 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
-type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
+export type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
 type Action = () => void;
 
 enum PromiseState {
@@ -230,4 +230,4 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
   }
 }
 
-export { PromiseExecutor, PromiseMock, ActivePromiseMock, PassivePromiseMock };
+export { PromiseMock, ActivePromiseMock, PassivePromiseMock };

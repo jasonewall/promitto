@@ -11,6 +11,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "strict": true,
+    "lib": ["ES2020"],
     "paths": {
       "@self/*": ["src/*"]
     },
