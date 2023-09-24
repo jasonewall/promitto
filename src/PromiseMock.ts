@@ -50,7 +50,7 @@ class PromiseMock<T> {
   ): Promise<TResult1 | TResult2> {
     return new ActivePromiseMock<TResult1 | TResult2>(
       (resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
-        this.onSettled(() => this.settleThen(resolveNext, rejectNext, onfulfilled, onrejected));
+        this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
       },
     );
   }
@@ -63,7 +63,7 @@ class PromiseMock<T> {
         resolveNext: (value: T | TResult) => void,
         rejectNext: (reason: any) => void,
       ) => {
-        this.onSettled(() => this.settleCatch(resolveNext, rejectNext, onrejected));
+        this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
       },
     );
   }
@@ -71,7 +71,7 @@ class PromiseMock<T> {
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
     return new ActivePromiseMock<T>(
       (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
-        this.onSettled(() => this.settleFinally(resolveNext, rejectNext, onfinally));
+        this.onSettled(() => this.completeFinally(resolveNext, rejectNext, onfinally));
       },
     );
   }
@@ -96,7 +96,7 @@ class PromiseMock<T> {
     }
   }
 
-  private settleThen<TResult1,TResult2>(
+  private completeThen<TResult1,TResult2>(
     resolveNext: (value: TResult1 | TResult2) => void,
     rejectNext: (reason: any) => void,
     onfulfilled: FulfillmentHandler<T, TResult1> | undefined | null,
@@ -121,7 +121,7 @@ class PromiseMock<T> {
     }
   }
 
-  private settleCatch<TResult>(
+  private completeCatch<TResult>(
     resolveNext: (value: T | TResult) => void,
     rejectNext: (reason: any) => void,
     onrejected: RejectionHandler<TResult> | undefined | null,
@@ -140,7 +140,7 @@ class PromiseMock<T> {
     }
   }
 
-  private settleFinally(
+  private completeFinally(
     resolveNext: (value: T) => void,
     rejectNext: (reason: any) => void,
     onfinally: (() => void) | undefined | null,
