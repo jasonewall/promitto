@@ -298,6 +298,124 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
     });
 
+    describe('#finally', () => {
+      describe('when resolved', () => {
+        it('should be called', async () => {
+          const [finally1] = mockFn('finally1');
+
+          const chain = TestPromise.resolve(180)
+            .finally(finally1);
+
+          const result = await chain;
+          expect(result).toEqual(180);
+          expect(finally1).toHaveBeenCalledTimes(1);
+        });
+
+        it('should be called even if we reject in a fulfillment handler', async () => {
+          const [then1, finally1] = mockFn('then1', 'finally1');
+          then1.mockReturnValue(TestPromise.reject(new Error('rejected')))
+
+          const chain = TestPromise.resolve(1810)
+            .then(then1)
+            .finally(finally1);
+
+          try {
+            await chain;
+          } catch (error: any) {
+            expect(error).toEqual(new Error('rejected'));
+          }
+
+          for (const mock of [then1, finally1]) expect(mock).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledWith(1810);
+        });
+
+        it('should be called if a fulfillment handler rejects with a promise', async () => {
+          const allMocks = mockFn('then1', 'finally1', 'catch1');
+
+          const [then1, finally1, catch1] = allMocks;
+          then1.mockReturnValue(TestPromise.reject(new Error('error')));
+          catch1.mockReturnValue(TestPromise.resolve(13));
+
+          const chain = TestPromise.resolve(1)
+            .then(then1)
+            .catch(catch1)
+            .finally(finally1);
+          const result = await chain;
+          expect(result).toEqual(13);
+          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledWith(1);
+        });
+
+        it('should be able to have multiple finally calls', async () => {
+          const allMocks = mockFn('then1', 'finally1', 'finally2', 'finally3');
+          const [then1, finally1, finally2, finally3] = allMocks;
+          then1.mockReturnValue('Good Year');
+
+          const chain = TestPromise.resolve(1952)
+            .finally(finally1)
+            .then(then1)
+            .finally(finally2)
+            .finally(finally3);
+
+          const result = await chain;
+          expect(result).toEqual('Good Year');
+          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledWith(1952);
+          expect(finally1).toHaveBeenCalledBefore(then1);
+          expect(finally2).toHaveBeenCalledAfter(then1);
+          expect(finally3).toHaveBeenCalledAfter(finally2);
+        });
+      });
+
+      describe('when rejected', () => {
+        it('should be called', async () => {
+          const [finally1] = mockFn('finally1');
+
+          const chain = TestPromise.reject(new Error('whoops'))
+            .finally(finally1);
+
+          try {
+            await chain;
+          } catch (error: any) {
+            expect(error).toEqual(new Error('whoops'));
+          }
+
+          expect(finally1).toHaveBeenCalledTimes(1);
+        });
+
+        it('should be called even if we recover in a rejection handler', async () => {
+          const [catch1, finally1] = mockFn('catch1', 'finally1');
+          catch1.mockReturnValue('A-ok');
+
+          const chain = TestPromise.reject(new Error('whoops'))
+            .catch(catch1)
+            .finally(finally1);
+
+          const result = await chain;
+          expect(result).toEqual('A-ok');
+          for (const mock of [catch1, finally1]) expect(mock).toHaveBeenCalledTimes(1);
+          expect(catch1).toHaveBeenCalledWith(new Error('whoops'));
+        });
+
+        it('should be able to chain multiple finally calls', async () => {
+          const [finally1, finally2, finally3] = mockFn('finally1', 'finally2', 'finally3');
+          const chain = TestPromise.reject(new Error('whoops'))
+            .finally(finally1)
+            .finally(finally2)
+            .finally(finally3)
+
+          try {
+            await chain;
+          } catch(error: any) {
+            expect(error).toEqual(new Error('whoops'));
+          }
+
+          const allMocks = [finally1, finally2, finally3];
+          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+        })
+      });
+    });
+
     describe('adding multiple handlers to the same promise (not chaining)', () => {
       const attachCallbacks = <T>(p: Promise<T>) => {
         const [then1, catch1, finally1, onrejected1] = mockFn('then1', 'catch1', 'finally1', 'onrejected1');

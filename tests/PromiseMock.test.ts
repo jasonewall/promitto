@@ -228,13 +228,4 @@ describe(PromiseMock.name, () => {
       expect(catch1).toHaveBeenCalledBefore(finally1);
     });
   });
-
-
-  describe('finally', () => {
-    it.todo('should be tested with all chain functions');
-  })
-
-  describe('catch', () => {
-    it.todo('should be tested with all chain functions');
-  })
 });
