@@ -14,13 +14,9 @@ const promiseTypes: TestPromiseConstructor[] = [];
 promiseTypes.push(ActivePromiseMock);
 promiseTypes.push(Promise);
 
-function mockFn(...fns: string[]): ReturnType<typeof jest.fn>[] {
-  const results: ReturnType<typeof jest.fn>[] = [];
-
-  for(const fnName of fns) {
-    results.push(jest.fn().mockName(fnName));
-  }
-
+function mockFn(...fns: string[]): jest.Mock[] {
+  const results: jest.Mock[] = [];
+  for(const fnName of fns) results.push(jest.fn().mockName(fnName));
   return results;
 }
 

@@ -3,8 +3,8 @@ export {};
 declare global {
     namespace jest {
         interface Matchers<R> {
-            toHaveBeenCalledAfter(expected: ReturnType<typeof jest.fn>): CustomMatcherResult;
-            toHaveBeenCalledBefore(expected: ReturnType<typeof jest.fn>): CustomMatcherResult;
+            toHaveBeenCalledAfter(expected: Mock): CustomMatcherResult;
+            toHaveBeenCalledBefore(expected: Mock): CustomMatcherResult;
         }
     }
 }
