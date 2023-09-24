@@ -1,7 +1,8 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
-export type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
 type Action = () => void;
+
+export type PromiseExecutor<T> = (resolve: (value: T | PromiseLike<T>) => void,  reject: (reason?: any) => void) => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -14,7 +15,7 @@ function unwrap<T>(
   destination: (value: T) => void,
   error: (error: any) => void,
 ): void {
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     destination(value);
     return;
   }
