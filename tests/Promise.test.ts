@@ -156,12 +156,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           const chain = TestPromise.reject(new Error('Rejected!'))
             .then(then1);
 
-          try {
-            await chain;
-          } catch(error: any) {
-            expect(error.message).toEqual('Rejected!');
-          }
-
+          await expect(chain).rejects.toThrowError('Rejected!');
           expect(then1).not.toHaveBeenCalled();
         });
 
@@ -182,11 +177,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           const chain = TestPromise.reject(new Error('Rejected!'))
             .then(then1, onrejected);
 
-          try {
-            await chain;
-          } catch(error: any) {
-            expect(error.message).toEqual('not ok');
-          }
+          await expect(chain).rejects.toThrowError('not ok');
           expect(then1).not.toHaveBeenCalled();
           expect(onrejected).toHaveBeenCalledTimes(1);
         });
@@ -197,11 +188,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           const chain = TestPromise.reject(new Error('Rejected!'))
             .then(then1, onrejected);
 
-          try {
-            await chain;
-          } catch(error: any) {
-            expect(error.message).toEqual('not ok');
-          }
+          await expect(chain).rejects.toThrowError('not ok');
 
           expect(then1).not.toHaveBeenCalled();
           expect(onrejected).toHaveBeenCalledTimes(1);
@@ -332,11 +319,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
             .then(then1)
             .finally(finally1);
 
-          try {
-            await chain;
-          } catch (error: any) {
-            expect(error).toEqual(new Error('rejected'));
-          }
+          await expect(chain).rejects.toThrowError('rejected');
 
           for (const mock of [then1, finally1]) expect(mock).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith(1810);
@@ -387,11 +370,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           const chain = TestPromise.reject(new Error('whoops'))
             .finally(finally1);
 
-          try {
-            await chain;
-          } catch (error: any) {
-            expect(error).toEqual(new Error('whoops'));
-          }
+          await expect(chain).rejects.toThrowError('whoops');
 
           expect(finally1).toHaveBeenCalledTimes(1);
         });
@@ -417,11 +396,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
             .finally(finally2)
             .finally(finally3)
 
-          try {
-            await chain;
-          } catch(error: any) {
-            expect(error).toEqual(new Error('whoops'));
-          }
+          await expect(chain).rejects.toThrowError('whoops');
 
           const allMocks = [finally1, finally2, finally3];
           for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
@@ -457,11 +432,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         const p = TestPromise.reject(new Error('oh no!'));
         const { then1, catch1, finally1, onrejected1 } = attachCallbacks(p);
 
-        try {
-          await p;
-        } catch (error: any) {
-          expect(error).toEqual(new Error('oh no!'));
-        }
+        await expect(p).rejects.toThrowError('oh no!');
 
         expect(then1).not.toHaveBeenCalled();
         for (const mock of [catch1, finally1, onrejected1]) expect(mock).toHaveBeenCalledTimes(1);
