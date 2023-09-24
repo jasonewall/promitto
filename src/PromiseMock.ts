@@ -21,7 +21,8 @@ function unwrap<T>(
   }
 
   if ((value as PromiseLike<T>).then) {
-    (value as PromiseLike<T>).then(destination, error);
+    const promiseLike = value as PromiseLike<T>;
+    promiseLike.then(destination, error);
     return;
   }
 
@@ -45,36 +46,46 @@ class PromiseMock<T> {
 
   protected deferredActions: Action[] = [];
 
+  private children: PromiseMock<any>[] = [];
+
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
-    return new ActivePromiseMock<TResult1 | TResult2>(
-      (resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
-        this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
-      },
-    );
+    return this.fork((resolveNext: (value: TResult1 | TResult2) => void, rejectNext: (reason: any) => void) => {
+      this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
+    });
   }
 
   catch<TResult = never>(
     onrejected?: RejectionHandler<TResult> | undefined | null,
   ): Promise<T | TResult> {
-    return new ActivePromiseMock<T | TResult>(
-      (
-        resolveNext: (value: T | TResult) => void,
-        rejectNext: (reason: any) => void,
-      ) => {
-        this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
-      },
-    );
+    return this.fork((
+      resolveNext: (value: T | TResult) => void,
+      rejectNext: (reason: any) => void,
+    ) => {
+      this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
+    });
   }
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-    return new ActivePromiseMock<T>(
-      (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
-        this.onSettled(() => this.completeFinally(resolveNext, rejectNext, onfinally));
-      },
-    );
+    return this.fork((resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
+      this.onSettled(() => this.completeFinally(resolveNext, rejectNext, onfinally));
+    });
+  }
+
+  async settled(): Promise<T> {
+    try {
+      await Promise.all(this.children.map((value) => value.settled()));
+    } catch (error: any) {
+      // don't care
+    }
+
+    if (this.status === PromiseState.Fulfilled) {
+      return this.value!;
+    } else {
+      throw this.reason;
+    }
   }
 
   get [Symbol.toStringTag]() {
@@ -154,6 +165,12 @@ class PromiseMock<T> {
     if (this.status === PromiseState.Rejected) {
       rejectNext(this.reason);
     }
+  }
+
+  private fork<T>(executor: PromiseExecutor<T>): ActivePromiseMock<T> {
+    const promise = new ActivePromiseMock<T>(executor);
+    this.children.push(promise);
+    return promise;
   }
 
   static resolve<T>(value: T): ResolvedPromiseMock<T> {

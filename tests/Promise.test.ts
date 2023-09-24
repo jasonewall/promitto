@@ -229,6 +229,19 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
 
       describe('when rejected', () => {
+        it('should resolve to a value if catch does not re-reject', async () => {
+          const catch1 = jest.fn().mockName('catch1');
+          catch1.mockReturnValue('recovered');
+
+          const chain = TestPromise.reject(new Error('rejected'))
+            .catch(catch1);
+
+          const result = await chain;
+          expect(result).toEqual('recovered');
+          expect(catch1).toHaveBeenCalledTimes(1);
+          expect(catch1).toHaveBeenCalledWith(new Error('rejected'));
+        });
+
         it('should switch to resolved if catch does not re-reject', async () => {
           const [catch1, then1, catch2] = mockFn('catch1', 'then1', 'catch2');
 

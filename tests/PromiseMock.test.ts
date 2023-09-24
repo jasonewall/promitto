@@ -93,7 +93,7 @@ describe(PromiseMock.name, () => {
       expect(then2).toHaveBeenCalledWith('Peter Piper');
     });
 
-    it.skip('should handle real promises gracefully', async () => {
+    it('should handle real promises gracefully', async () => {
       const allMocks = mockFn('then1', 'then2');
       const [then1, then2] = allMocks;
 
@@ -103,7 +103,7 @@ describe(PromiseMock.name, () => {
         .then(then1)
         .then(then2);
 
-      const result = await p;
+      const result = await p.settled();
 
       expect(result).toEqual('Sally');
       for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
@@ -230,17 +230,64 @@ describe(PromiseMock.name, () => {
       const { then1, onrejected1, catch1, finally1 }= attachCallbacks(p);
 
       p.reject(new Error('Rejected!'));
-      try {
-        await p;
-      } catch (error: any) {
-        expect(error).toEqual(new Error('Rejected!'));
-      }
+      await expect(p).rejects.toThrowError('Rejected!');
 
       expect(then1).not.toHaveBeenCalled();
       for (const mock of [onrejected1, catch1, finally1]) expect(mock).toBeCalledTimes(1);
       for (const mock of [onrejected1, catch1]) expect(mock).toBeCalledWith(new Error('Rejected!'));
       expect(onrejected1).toHaveBeenCalledBefore(catch1);
       expect(catch1).toHaveBeenCalledBefore(finally1);
+    });
+  });
+
+  describe('#settled', () => {
+    /**
+     * Application code could end up resolving promises to core async promises which would still
+     * make our tests rely on an arbitrary number of await Promise.resolve() calls.
+     * So provide a settled promise that resolves to the original promise value only when all other
+     * promises in the chain have settled.
+     */
+    it('should provide a promise that only resolves once the whole chain resolves', async () => {
+      const then = jest.fn();
+      then.mockReturnValue(Promise.resolve('Success!'));
+
+      const p = PromiseMock.resolve('API results');
+      const callStackSize = 10;
+      let chain:Promise<string> = p;
+      for (let i = 0; i < callStackSize; i++) {
+        chain = chain.then(then);
+      }
+
+      const result = await p.settled();
+
+      expect(result).toEqual('API results');
+      expect(then).toHaveBeenCalledTimes(callStackSize);
+    });
+
+    it('should provide a promise that resolves to however the original promise resolved', async () => {
+      const catch1 = jest.fn().mockName('catch1');
+      catch1.mockReturnValue('Recovered');
+      const p = PromiseMock.reject(new Error('rejected'));
+      const chain = p.catch(catch1);
+
+      await expect(p.settled()).rejects.toThrowError('rejected');
+
+      const result = await chain;
+      expect(result).toEqual('Recovered');
+      expect(catch1).toHaveBeenCalledWith(new Error('rejected'));
+    });
+
+    it('should not get rejected if later handlers are rejected', async () => {
+      const [then1] = mockFn('then1');
+      then1.mockReturnValue(Promise.reject(new Error('rejected')));
+      const p = PromiseMock.resolve('A-ok');
+      const chain = p.then(then1);
+
+      const result = await p.settled();
+      expect(result).toEqual('A-ok');
+      expect(then1).toHaveBeenCalledWith('A-ok');
+
+      await expect(chain).rejects.toThrowError('rejected');
     });
   });
 });
