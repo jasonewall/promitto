@@ -23,8 +23,8 @@ function mockFn(...fns: string[]): jest.Mock[] {
 promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
   describe(TestPromise.name, () => {
     describe('#then', () => {
-      describe('when rejected', () => {
-        it('should call success handlers if promise is rejected', async () => {
+      describe('when resolved', () => {
+        it('should call fulfilled handlers', async () => {
           const then1 = jest.fn();
           then1.mockReturnValue(16);
 
@@ -36,7 +36,126 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           expect(result).toEqual(16);
         });
 
-        it('should not call success handlers if promise is rejected', async () => {
+        it('should not call rejection handlers', async () => {
+          const [then1, onrejected1] = mockFn('then1', 'onrejected1');
+          then1.mockReturnValue(32);
+
+          const chain = TestPromise.resolve(18)
+            .then(then1, onrejected1);
+
+          const results = await chain;
+          expect(then1).toHaveBeenCalledWith(18);
+          expect(onrejected1).not.toHaveBeenCalled();
+        });
+
+        it('should reject the next promise if fulfillment handler raises an error', async () => {
+          const [then1, onrejected1, catch1] = mockFn('then1', 'onrejected1', 'catch1');
+          then1.mockImplementation(() => { throw new Error('What am I supposed to do with this?!'); });
+          catch1.mockReturnValue('We are saved!');
+
+          const chain = TestPromise.resolve(18)
+            .then(then1, onrejected1)
+            .catch(catch1);
+
+          const result = await chain;
+          expect(result).toEqual('We are saved!');
+          expect(then1).toHaveBeenCalledWith(18);
+          expect(onrejected1).not.toHaveBeenCalled();
+          expect(catch1).toHaveBeenCalledWith(new Error('What am I supposed to do with this?!'));
+          expect(catch1).toHaveBeenCalledAfter(then1);
+        });
+
+        it('should reject the new promise if fulfillment handler returns a rejected promise', async() => {
+          const [then1, onrejected1, catch1] = mockFn('then1', 'onrejected1', 'catch1');
+          then1.mockReturnValue(TestPromise.reject('Something bad happened'));
+          catch1.mockReturnValue('We are saved!');
+
+          const chain = TestPromise.resolve(19)
+            .then(then1, onrejected1)
+            .catch(catch1);
+
+          const result = await chain;
+          expect(result).toEqual('We are saved!');
+          expect(then1).toHaveBeenCalledWith(19);
+          expect(onrejected1).not.toHaveBeenCalled();
+          expect(catch1).toHaveBeenCalledWith('Something bad happened');
+          expect(catch1).toHaveBeenCalledAfter(then1);
+        })
+
+        it('should be chainable with multiple thens', async () => {
+          const [then1, then2, then3] = mockFn('then1', 'then2', 'then3');
+          then1.mockReturnValue(1);
+          then2.mockReturnValue(20);
+          then3.mockReturnValue('33');
+
+          const chain = TestPromise.resolve('Hello')
+            .then(then1)
+            .then(then2)
+            .then(then3);
+
+          const result = await chain;
+          expect(result).toEqual('33');
+          expect(then1).toHaveBeenCalledWith('Hello');
+          expect(then1).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledBefore(then2);
+
+          expect(then2).toHaveBeenCalledWith(1);
+          expect(then2).toHaveBeenCalledTimes(1);
+          expect(then2).toHaveBeenCalledAfter(then1);
+
+          expect(then3).toHaveBeenCalledWith(20);
+          expect(then3).toHaveBeenCalledTimes(1);
+          expect(then3).toHaveBeenCalledAfter(then2);
+        });
+
+        it('should unwrap promises if they are returned by a fulfillment handler', async () => {
+          const [then1, then2] = mockFn('then1', 'then2');
+          then1.mockReturnValue(TestPromise.resolve(13));
+          then2.mockReturnValue('Success!');
+
+          const chain = TestPromise.resolve('Start')
+            .then(then1)
+            .then(then2);
+
+          const result = await chain;
+          expect(result).toEqual('Success!');
+          expect(then1).toHaveBeenCalledWith('Start');
+          expect(then1).toHaveBeenCalledTimes(1);
+          expect(then1).toHaveBeenCalledBefore(then2);
+
+          expect(then2).toHaveBeenCalledWith(13);
+          expect(then2).toHaveBeenCalledTimes(1);
+          expect(then2).toHaveBeenCalledAfter(then1);
+        });
+
+        it('should allow finally to be interjected anywhere', async () => {
+          const [then1, finally1] = mockFn('then1', 'finally1');
+          const [then2, finally2] = mockFn('then2', 'finally2');
+          then1.mockReturnValue(14);
+          then2.mockReturnValue(18);
+
+          const chain = TestPromise.resolve('Start')
+            .then(then1)
+            .finally(finally1)
+            .then(then2)
+            .finally(finally2);
+
+          const result = await chain;
+
+          const allMocks = [then1, then2, finally1, finally2];
+          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expect(result).toEqual(18);
+          expect(then1).toHaveBeenCalledWith('Start');
+          expect(then1).toHaveBeenCalledBefore(finally1);
+          expect(finally1).toHaveBeenCalledAfter(then1);
+          expect(then2).toHaveBeenCalledWith(14);
+          expect(then2).toHaveBeenCalledAfter(finally1);
+          expect(finally2).toHaveBeenCalledAfter(then2);
+        })
+      });
+
+      describe('when rejected', () => {
+        it('should not call fulfilled handlers if promise is rejected', async () => {
           const then1 = jest.fn();
           const chain = TestPromise.reject(new Error('Rejected!'))
             .then(then1);
@@ -44,7 +163,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           try {
             await chain;
           } catch(error: any) {
-            // swallow
+            expect(error.message).toEqual('Rejected!');
           }
 
           expect(then1).not.toHaveBeenCalled();

@@ -80,21 +80,11 @@ class PromiseMock<T> {
     return new ActivePromiseMock<T>(
       (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
         if (this.status === PromiseState.Pending) {
-          onfinally && this.defer(onfinally);
-
           this.defer(() => {
-            if (this.status === PromiseState.Fulfilled) {
-              resolveNext(this.value!);
-            }
-          });
-
-          this.defer(() => {
-            if (this.status === PromiseState.Rejected) {
-              rejectNext(this.reason);
-            }
+            this.settleFinally(resolveNext, rejectNext, onfinally);
           });
         } else {
-          onfinally && onfinally();
+          this.settleFinally(resolveNext, rejectNext, onfinally);
         }
       },
     );
@@ -153,6 +143,21 @@ class PromiseMock<T> {
       }
     } else {
       resolveNext(this.value!);
+    }
+  }
+
+  private settleFinally(
+    resolveNext: (value: T) => void,
+    rejectNext: (reason: any) => void,
+    onfinally: (() => void) | undefined | null,
+  ) {
+    onfinally && onfinally();
+    if (this.status === PromiseState.Fulfilled) {
+      resolveNext(this.value!);
+    }
+
+    if (this.status === PromiseState.Rejected) {
+      rejectNext(this.reason);
     }
   }
 
