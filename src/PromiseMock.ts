@@ -284,4 +284,6 @@ export {
   ActivePromiseMock,
   PassivePromiseMock,
   PendingPromiseMock,
+  RejectedPromiseMock,
+  ResolvedPromiseMock,
 };

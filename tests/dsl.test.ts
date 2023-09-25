@@ -62,6 +62,30 @@ describe("promitto", () => {
   });
 
   describe('#resolve', () => {
-    it.todo("should return a promise that is already resolved");
+    it("should return a promise that is already resolved", async () => {
+      const p = dsl.resolve([1,2,3,4]);
+      const handlers = assignCallbacks(p);
+      const[then1, catch1, finally1] = handlers;
+
+      expectAll(then1, finally1).toHaveBeenCalledTimes(1);
+      expect(catch1).not.toHaveBeenCalled();
+      expect(then1).toHaveBeenCalledWith([1,2,3,4]);
+      const result = await p.settled();
+      expect(result).toEqual([1,2, 3, 4]);
+    });
+  });
+
+  describe('#rejected', () => {
+    it("should return a promise that is already rejected", async () => {
+      const p = dsl.reject(new Error('rejected'));
+      const handlers = assignCallbacks(p);
+      const [then1, catch1, finally1] = handlers;
+
+      expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
+      expect(then1).not.toHaveBeenCalled();
+      expect(catch1).toHaveBeenCalledWith(new Error('rejected'));
+
+      await expect(p.settled()).rejects.toThrowError('rejected');
+    });
   });
 });
