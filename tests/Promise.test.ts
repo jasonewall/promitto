@@ -1,6 +1,6 @@
 import { describe } from "@jest/globals";
 import "./utils/invocationCallOrderMatcher";
-import { mockFn } from "./utils/assorted";
+import { expectAll, mockFn } from "./utils/assorted";
 import { PromiseExecutor, ActivePromiseMock } from "@self/PromiseMock";
 
 interface TestPromiseConstructor {
@@ -153,10 +153,8 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           const result = await chain;
 
-          const allMocks = [then1, then2, finally1, finally2];
-          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
-          for (const mock of [onrejected1, onrejected2])
-            expect(mock).not.toHaveBeenCalled();
+          expectAll(then1, then2, finally1, finally2).toHaveBeenCalledTimes(1);
+          expectAll(onrejected1, onrejected2).not.toHaveBeenCalled();
           expect(result).toEqual(18);
           expect(then1).toHaveBeenCalledWith("Start");
           expect(then1).toHaveBeenCalledBefore(finally1);
@@ -300,8 +298,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
             .catch(catch2);
 
           await chain;
-          for (const mock of [catch1, catch2])
-            expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(catch1, catch2).toHaveBeenCalledTimes(1);
           expect(then1).not.toHaveBeenCalled();
           expect(catch1).toHaveBeenCalledWith(
             new Error("We are not starting of on a good note"),
@@ -323,9 +320,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           await chain;
 
-          [finally1, catch1, then1].forEach((value) => {
-            expect(value).toHaveBeenCalledTimes(1);
-          });
+          expectAll(finally1, catch1, then1).toHaveBeenCalledTimes(1);
           expect(finally1).toHaveBeenCalledBefore(catch1);
           expect(catch1).toHaveBeenCalledBefore(then1);
         });
@@ -352,15 +347,14 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           await expect(chain).rejects.toThrowError("rejected");
 
-          for (const mock of [then1, finally1])
-            expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(then1, finally1).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith(1810);
         });
 
         it("should be called if a fulfillment handler rejects with a promise", async () => {
-          const allMocks = mockFn("then1", "finally1", "catch1");
+          const handlers = mockFn("then1", "finally1", "catch1");
+          const [then1, finally1, catch1] = handlers;
 
-          const [then1, finally1, catch1] = allMocks;
           then1.mockReturnValue(TestPromise.reject(new Error("error")));
           catch1.mockReturnValue(TestPromise.resolve(13));
 
@@ -368,15 +362,16 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
             .then(then1)
             .catch(catch1)
             .finally(finally1);
+
           const result = await chain;
           expect(result).toEqual(13);
-          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(... handlers).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith(1);
         });
 
         it("should be able to have multiple finally calls", async () => {
-          const allMocks = mockFn("then1", "finally1", "finally2", "finally3");
-          const [then1, finally1, finally2, finally3] = allMocks;
+          const handlers = mockFn("then1", "finally1", "finally2", "finally3");
+          const [then1, finally1, finally2, finally3] = handlers;
           then1.mockReturnValue("Good Year");
 
           const chain = TestPromise.resolve(1952)
@@ -387,7 +382,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           const result = await chain;
           expect(result).toEqual("Good Year");
-          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(...handlers).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith(1952);
           expect(finally1).toHaveBeenCalledBefore(then1);
           expect(finally2).toHaveBeenCalledAfter(then1);
@@ -418,17 +413,13 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           const result = await chain;
           expect(result).toEqual("A-ok");
-          for (const mock of [catch1, finally1])
-            expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
           expect(catch1).toHaveBeenCalledWith(new Error("whoops"));
         });
 
         it("should be able to chain multiple finally calls", async () => {
-          const [finally1, finally2, finally3] = mockFn(
-            "finally1",
-            "finally2",
-            "finally3",
-          );
+          const handlers = mockFn("finally1", "finally2", "finally3");
+          const [finally1, finally2, finally3] = handlers;
           const chain = TestPromise.reject(new Error("whoops"))
             .finally(finally1)
             .finally(finally2)
@@ -436,8 +427,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           await expect(chain).rejects.toThrowError("whoops");
 
-          const allMocks = [finally1, finally2, finally3];
-          for (const mock of allMocks) expect(mock).toHaveBeenCalledTimes(1);
+          expectAll(...handlers).toHaveBeenCalledTimes(1);
         });
       });
     });
@@ -470,10 +460,8 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         const value = await p;
 
         expect(value).toEqual("Success!");
-        for (const mock of [then1, finally1])
-          expect(mock).toHaveBeenCalledTimes(1);
-        for (const mock of [onrejected1, catch1])
-          expect(mock).not.toHaveBeenCalled();
+        expectAll(then1, finally1).toHaveBeenCalledTimes(1);
+        expectAll(onrejected1, catch1).not.toHaveBeenCalled();
         expect(then1).toHaveBeenCalledWith("Success!");
         expect(then1).toHaveBeenCalledBefore(finally1);
       });
@@ -485,10 +473,8 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
         await expect(p).rejects.toThrowError("oh no!");
 
         expect(then1).not.toHaveBeenCalled();
-        for (const mock of [catch1, finally1, onrejected1])
-          expect(mock).toHaveBeenCalledTimes(1);
-        for (const mock of [catch1, onrejected1])
-          expect(mock).toHaveBeenCalledWith(new Error("oh no!"));
+        expectAll(catch1, finally1, onrejected1).toHaveBeenCalledTimes(1);
+        expectAll(catch1, onrejected1).toHaveBeenCalledWith(new Error("oh no!"));
         expect(onrejected1).toHaveBeenCalledBefore(catch1);
         expect(finally1).toHaveBeenCalledAfter(catch1);
       });
