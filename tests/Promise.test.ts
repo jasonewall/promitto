@@ -442,6 +442,12 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
     });
 
+    describe('.reject', () => {
+      it('should return a promise already rejected', async () => {
+        await expect(TestPromise.reject(new Error('rejected'))).rejects.toThrowError('rejected');
+      });
+    })
+
     describe("adding multiple handlers to the same promise (not chaining)", () => {
       const attachCallbacks = <T>(p: Promise<T>) => {
         const [then1, catch1, finally1, onrejected1] = mockFn(

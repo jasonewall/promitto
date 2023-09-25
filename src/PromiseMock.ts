@@ -221,13 +221,16 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
 }
 
 class PendingPromiseMock<T> extends PromiseMock<T> {
+  private pendingValue: T;
+
   constructor(value: T) {
     super();
-    this.value = value;
+    this.pendingValue = value;
   }
 
   resolve() {
     this.status = PromiseState.Fulfilled;
+    this.value = this.pendingValue;
     this.runDeferred();
   }
 }
