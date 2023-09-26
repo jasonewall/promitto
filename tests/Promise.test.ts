@@ -238,6 +238,11 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
 
       describe("when rejected", () => {
+        it("should still reject if we catch without a handler", async () => {
+          const chain = TestPromise.reject().catch();
+          await expect(chain).rejects.toEqual(undefined);
+        });
+
         it("should resolve to a value if catch does not re-reject", async () => {
           const catch1 = jest.fn().mockName("catch1");
           catch1.mockReturnValue("recovered");
@@ -435,6 +440,21 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
     describe('.reject', () => {
       it('should return a promise already rejected', async () => {
         await expect(TestPromise.reject(new Error('rejected'))).rejects.toThrowError('rejected');
+      });
+
+      it('should be callable without a param', async () => {
+        await expect(TestPromise.reject()).rejects.toEqual(undefined);
+
+        let chain: Promise<unknown>;
+        chain = TestPromise.reject().catch();
+        await expect(chain).rejects.toEqual(undefined);
+
+        const [catch1] = mockFn('catch1');
+        chain = TestPromise.reject().catch(catch1);
+        await expect(chain).resolves.toEqual(undefined);
+
+        expect(catch1).toHaveBeenCalledWith(undefined);
+        expect(catch1).toHaveBeenCalledTimes(1);
       });
     })
 

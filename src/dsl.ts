@@ -13,7 +13,7 @@ export default {
     return new ResolvedPromiseMock(value);
   },
 
-  reject: <T>(reason: any): RejectedPromiseMock<T> => {
+  reject: <T>(reason?: any): RejectedPromiseMock<T> => {
     return new RejectedPromiseMock<T>(reason);
   },
 };

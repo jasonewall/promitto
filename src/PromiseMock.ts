@@ -153,7 +153,7 @@ class PromiseMock<T> {
 
   private completeCatch<TResult>(
     resolveNext: (value: T | TResult) => void,
-    rejectNext: (reason: any) => void,
+    rejectNext: (reason?: any) => void,
     onrejected: RejectionHandler<TResult> | undefined | null,
   ) {
     if (this.status === PromiseState.Rejected) {
@@ -164,6 +164,8 @@ class PromiseMock<T> {
         } catch (error) {
           rejectNext(error);
         }
+      } else {
+        rejectNext();
       }
     } else {
       resolveNext(this.value!);

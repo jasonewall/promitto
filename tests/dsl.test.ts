@@ -87,5 +87,15 @@ describe("promitto", () => {
 
       await expect(p.settled()).rejects.toThrowError('rejected');
     });
+
+    it("should be callable without a param", async () => {
+      const p = dsl.reject();
+      const handlers = assignCallbacks(p);
+      const [then1, catch1, finally1] = handlers;
+
+      expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
+      expect(then1).not.toHaveBeenCalled();
+      expect(catch1).toHaveBeenCalledWith(undefined);
+    });
   });
 });
