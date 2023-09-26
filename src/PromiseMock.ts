@@ -51,7 +51,17 @@ class PromiseMock<T> {
 
   protected deferredActions: Action[] = [];
 
-  private children: PromiseMock<any>[] = [];
+  private _children: PromiseMock<any>[] = [];
+
+  /**
+   * All PromiseMock's created by calling then, catch, finally of this Promise mock.
+   *
+   * Provided for troubleshooting purposes to help determine which code path may
+   * have created the promise chain.
+   */
+  get children(): ReadonlyArray<PromiseMock<any>> {
+    return this._children;
+  }
 
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
@@ -94,9 +104,18 @@ class PromiseMock<T> {
     );
   }
 
+  /**
+   * Returns a Promise that only resolves once all chained promises created
+   * by then, catch, finally and their children are resolved.
+   *
+   * This is mostly useful for testing code that may add callbacks several
+   * layers deep. In these scenarios it's likely you will not have access to the
+   * end of the chain, however the promise returned by settled will not
+   * resolve/reject until the entire chain is resolved.
+   */
   async settled(): Promise<T> {
     try {
-      await Promise.all(this.children.map((value) => value.settled()));
+      await Promise.all(this._children.map((value) => value.settled()));
     } catch (error: any) {
       // don't care
     }
@@ -192,7 +211,7 @@ class PromiseMock<T> {
   private fork<T>(executor: PromiseExecutor<T>): ActivePromiseMock<T> {
     const promise = new ActivePromiseMock<T>(executor);
     // For debugging purposes and for settled() we track the promises we fork
-    this.children.push(promise);
+    this._children.push(promise);
     return promise;
   }
 
@@ -212,6 +231,11 @@ class PromiseMock<T> {
  * with the value meant to be represented by this instance.
  */
 class PassivePromiseMock<T> extends PromiseMock<T> {
+  /**
+   * Marks this promise as resolved and updates it's internal value with the provided value.
+   * All appropriate handlers added with then, catch, finally are executed.
+   * @param value Value to resolve this promise to.
+   */
   resolve(value: T) {
     this.status = PromiseState.Fulfilled;
     this.value = value;
@@ -233,6 +257,10 @@ class PendingPromiseMock<T> extends PromiseMock<T> {
     this.pendingValue = value;
   }
 
+  /**
+   * Resolves the promise to the previously provided value.
+   * All appropriate handlers added with then, catch, finally are executed.
+   */
   resolve() {
     this.status = PromiseState.Fulfilled;
     this.value = this.pendingValue;

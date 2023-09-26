@@ -10,7 +10,6 @@ const config: JestConfigWithTsJest = {
   transform: {
     "^.+\\.(t|j)s$": "@swc/jest",
   },
-  reporters: ["default", "jest-junit"],
 };
 
 export default config;
