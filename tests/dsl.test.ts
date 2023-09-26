@@ -11,21 +11,40 @@ function assignCallbacks<T>(p: PromiseMock<T>) {
   return handlers;
 }
 
+async function expectToBehaveLikeResolvedPromise<T>(
+  p: PromiseMock<T>,
+  value: T,
+  ...handlers: jest.Mock[]
+) {
+  const [then1, catch1, finally1] = handlers;
+  await expect(p.settled()).resolves.toEqual(value);
+  expectAll(then1, finally1).toHaveBeenCalledTimes(1);
+  expect(catch1).not.toHaveBeenCalled();
+  expect(then1).toHaveBeenCalledWith(value);
+}
+
+async function expectToBehaveLikeRejectedPromise<T>(
+  p: PromiseMock<T>,
+  reason: any,
+  ...handlers: jest.Mock[]
+) {
+  const [then1, catch1, finally1] = handlers;
+
+  await expect(p.settled()).rejects.toEqual(reason);
+  expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
+  expect(catch1).toHaveBeenCalledWith(reason);
+  expect(then1).not.toHaveBeenCalled();
+}
+
 describe("promitto", () => {
   describe("#pending", () => {
     it("should return a pending promise that represents the provided value", async () => {
       const p = dsl.pending("a nice value");
       const handlers = assignCallbacks(p);
-      const [then1, catch1, finally1] = handlers;
 
       expectAll(...handlers).not.toHaveBeenCalled();
-
       p.resolve();
-      const result = await p.settled();
-
-      expect(result).toEqual("a nice value");
-      expectAll(then1, finally1).toHaveBeenCalledTimes(1);
-      expect(catch1).not.toHaveBeenCalled();
+      await expectToBehaveLikeResolvedPromise(p, "a nice value", ...handlers);
     });
   });
 
@@ -33,69 +52,61 @@ describe("promitto", () => {
     it("should return a blank slate promise that can be resolved with any value", async () => {
       const p = dsl.promise<number>();
       const handlers = assignCallbacks(p);
-      const [then1, catch1, finally1] = handlers;
 
-      expectAll(... handlers).not.toHaveBeenCalled();
+      expectAll(...handlers).not.toHaveBeenCalled();
 
       p.resolve(11);
-      const result = await p.settled();
-
-      expectAll(then1, finally1).toHaveBeenCalledTimes(1);
-      expect(then1).toHaveBeenCalledWith(11);
-      expect(catch1).not.toHaveBeenCalled();
+      await expectToBehaveLikeResolvedPromise(p, 11, ...handlers);
     });
 
     it("should return a blank slate promise that can be rejected with any error", async () => {
       const p = dsl.promise<string>();
       const handlers = assignCallbacks(p);
-      const [then1, catch1, finally1] = handlers;
 
       expectAll(...handlers).not.toHaveBeenCalled();
 
-      p.reject(new Error('rejected'));
-      await expect(p.settled()).rejects.toThrowError('rejected');
-
-      expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
-      expect(catch1).toHaveBeenCalledWith(new Error('rejected'));
-      expect(then1).not.toHaveBeenCalled();
+      p.reject(new Error("rejected"));
+      await expectToBehaveLikeRejectedPromise(
+        p,
+        new Error("rejected"),
+        ...handlers,
+      );
     });
   });
 
-  describe('#resolve', () => {
+  describe("#resolve", () => {
     it("should return a promise that is already resolved", async () => {
-      const p = dsl.resolve([1,2,3,4]);
+      const p = dsl.resolve([1, 2, 3, 4]);
       const handlers = assignCallbacks(p);
-      const[then1, catch1, finally1] = handlers;
 
-      expectAll(then1, finally1).toHaveBeenCalledTimes(1);
-      expect(catch1).not.toHaveBeenCalled();
-      expect(then1).toHaveBeenCalledWith([1,2,3,4]);
-      const result = await p.settled();
-      expect(result).toEqual([1,2, 3, 4]);
+      await expectToBehaveLikeResolvedPromise(p, [1, 2, 3, 4], ...handlers);
+    });
+
+    it("should be callable without a param", async () => {
+      const p = dsl.resolve();
+      const handlers = assignCallbacks(p);
+
+      await expectToBehaveLikeResolvedPromise(p, undefined, ...handlers);
     });
   });
 
-  describe('#rejected', () => {
+  describe("#rejected", () => {
     it("should return a promise that is already rejected", async () => {
-      const p = dsl.reject(new Error('rejected'));
+      const p = dsl.reject(new Error("rejected"));
       const handlers = assignCallbacks(p);
-      const [then1, catch1, finally1] = handlers;
 
-      expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
-      expect(then1).not.toHaveBeenCalled();
-      expect(catch1).toHaveBeenCalledWith(new Error('rejected'));
-
-      await expect(p.settled()).rejects.toThrowError('rejected');
+      await expectToBehaveLikeRejectedPromise(
+        p,
+        new Error("rejected"),
+        ...handlers,
+      );
     });
 
     it("should be callable without a param", async () => {
       const p = dsl.reject();
       const handlers = assignCallbacks(p);
-      const [then1, catch1, finally1] = handlers;
 
-      expectAll(catch1, finally1).toHaveBeenCalledTimes(1);
-      expect(then1).not.toHaveBeenCalled();
-      expect(catch1).toHaveBeenCalledWith(undefined);
+      await expectToBehaveLikeRejectedPromise(p, undefined, ...handlers);
     });
   });
 });

@@ -191,11 +191,12 @@ class PromiseMock<T> {
 
   private fork<T>(executor: PromiseExecutor<T>): ActivePromiseMock<T> {
     const promise = new ActivePromiseMock<T>(executor);
+    // For debugging purposes and for settled() we track the promises we fork
     this.children.push(promise);
     return promise;
   }
 
-  static resolve<T>(value: T): ResolvedPromiseMock<T> {
+  static resolve<T>(value?: T): ResolvedPromiseMock<T> {
     return new ResolvedPromiseMock(value);
   }
 
@@ -240,7 +241,7 @@ class PendingPromiseMock<T> extends PromiseMock<T> {
 }
 
 class ResolvedPromiseMock<T> extends PromiseMock<T> {
-  constructor(value: T) {
+  constructor(value?: T) {
     super();
     this.status = PromiseState.Fulfilled;
     this.value = value;
@@ -269,7 +270,7 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
       this.runDeferred();
     };
 
-    const reject = (reason: any) => {
+    const reject = (reason?: any) => {
       this.status = PromiseState.Rejected;
       this.reason = reason;
       this.runDeferred();

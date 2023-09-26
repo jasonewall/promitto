@@ -8,7 +8,7 @@ interface TestPromiseConstructor {
 
   reject<T = never>(reason?: any): Promise<T>;
 
-  resolve<T>(value: T): Promise<T>;
+  resolve<T>(value?: T): Promise<T>;
 }
 
 const promiseTypes: TestPromiseConstructor[] = [];
@@ -370,7 +370,7 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           const result = await chain;
           expect(result).toEqual(13);
-          expectAll(... handlers).toHaveBeenCalledTimes(1);
+          expectAll(...handlers).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith(1);
         });
 
@@ -437,26 +437,34 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
     });
 
-    describe('.reject', () => {
-      it('should return a promise already rejected', async () => {
-        await expect(TestPromise.reject(new Error('rejected'))).rejects.toThrowError('rejected');
+    describe(".resolve", () => {
+      it("should be callable without a param", async () => {
+        await expect(TestPromise.resolve()).resolves.toEqual(undefined);
+      });
+    });
+
+    describe(".reject", () => {
+      it("should return a promise already rejected", async () => {
+        await expect(
+          TestPromise.reject(new Error("rejected")),
+        ).rejects.toThrowError("rejected");
       });
 
-      it('should be callable without a param', async () => {
+      it("should be callable without a param", async () => {
         await expect(TestPromise.reject()).rejects.toEqual(undefined);
 
         let chain: Promise<unknown>;
         chain = TestPromise.reject().catch();
         await expect(chain).rejects.toEqual(undefined);
 
-        const [catch1] = mockFn('catch1');
+        const [catch1] = mockFn("catch1");
         chain = TestPromise.reject().catch(catch1);
         await expect(chain).resolves.toEqual(undefined);
 
         expect(catch1).toHaveBeenCalledWith(undefined);
         expect(catch1).toHaveBeenCalledTimes(1);
       });
-    })
+    });
 
     describe("adding multiple handlers to the same promise (not chaining)", () => {
       const attachCallbacks = <T>(p: Promise<T>) => {
@@ -494,7 +502,9 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
         expect(then1).not.toHaveBeenCalled();
         expectAll(catch1, finally1, onrejected1).toHaveBeenCalledTimes(1);
-        expectAll(catch1, onrejected1).toHaveBeenCalledWith(new Error("oh no!"));
+        expectAll(catch1, onrejected1).toHaveBeenCalledWith(
+          new Error("oh no!"),
+        );
         expect(onrejected1).toHaveBeenCalledBefore(catch1);
         expect(finally1).toHaveBeenCalledAfter(catch1);
       });
