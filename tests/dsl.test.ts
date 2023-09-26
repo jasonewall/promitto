@@ -50,7 +50,7 @@ describe("promitto", () => {
 
   describe("#promise", () => {
     it("should return a blank slate promise that can be resolved with any value", async () => {
-      const p = dsl.promise<number>();
+      const p = dsl<number>();
       const handlers = assignCallbacks(p);
 
       expectAll(...handlers).not.toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe("promitto", () => {
     });
 
     it("should return a blank slate promise that can be rejected with any error", async () => {
-      const p = dsl.promise<string>();
+      const p = dsl<string>();
       const handlers = assignCallbacks(p);
 
       expectAll(...handlers).not.toHaveBeenCalled();

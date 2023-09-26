@@ -36,11 +36,11 @@ describe(PromiseMock.name, () => {
       p.then(then1);
       p.finally(finally1);
 
-      expectAll(... handlers).not.toHaveBeenCalled();
+      expectAll(...handlers).not.toHaveBeenCalled();
 
       p.resolve(93);
 
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
       expect(then1).toHaveBeenCalledWith(93);
       expect(then1).toHaveBeenCalledBefore(finally1);
     });
@@ -54,11 +54,11 @@ describe(PromiseMock.name, () => {
 
       then1.mockReturnValue("33");
 
-      expectAll(... handlers).not.toHaveBeenCalled();
+      expectAll(...handlers).not.toHaveBeenCalled();
 
       p.resolve(23);
 
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
       expect(then1).toHaveBeenCalledWith(23);
       expect(then2).toHaveBeenCalledWith("33");
       expect(then1).toHaveBeenCalledBefore(then2);
@@ -84,7 +84,7 @@ describe(PromiseMock.name, () => {
       );
       p.then(then1).then(then2);
 
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
 
       expect(then1).toHaveBeenCalledWith("Peter");
       expect(then2).toHaveBeenCalledWith("Peter Piper");
@@ -103,7 +103,7 @@ describe(PromiseMock.name, () => {
       const result = await p.settled();
 
       expect(result).toEqual("Sally");
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
       expect(then1).toHaveBeenCalledWith("Sally");
       expect(then2).toHaveBeenCalledWith("Sally Sells");
     });
@@ -126,7 +126,7 @@ describe(PromiseMock.name, () => {
       p.catch(catch1).finally(finally1);
 
       p.reject(new Error("this is fine"));
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
       expect(catch1).toHaveBeenCalledBefore(finally1);
     });
 
@@ -141,7 +141,7 @@ describe(PromiseMock.name, () => {
       for (const m of handlers) expect(m).not.toBeCalled();
 
       p.reject(new Error("derp"));
-      expectAll(... handlers).toHaveBeenCalledTimes(1);
+      expectAll(...handlers).toHaveBeenCalledTimes(1);
       expect(then1).toHaveBeenCalledWith("recovered");
       expect(finally1).toHaveBeenCalledBefore(catch1);
       expect(catch1).toHaveBeenCalledBefore(then1);
@@ -168,7 +168,7 @@ describe(PromiseMock.name, () => {
       function expectPromiseToWork(handlers: jest.Mock[]) {
         const [then1, then2, catch1] = handlers;
 
-        expectAll(... handlers).toHaveBeenCalledTimes(1);
+        expectAll(...handlers).toHaveBeenCalledTimes(1);
         expect(then1).toHaveBeenCalledWith("Minor Person's name");
         expect(then2).toHaveBeenCalledWith(17);
         expect(catch1).toHaveBeenCalledWith(
@@ -179,7 +179,7 @@ describe(PromiseMock.name, () => {
       it("should work when resolving after chain is setup", () => {
         const p = new PassivePromiseMock<string>();
         const handlers = setupChain(p);
-        expectAll(... handlers).not.toHaveBeenCalled();
+        expectAll(...handlers).not.toHaveBeenCalled();
         p.resolve("Minor Person's name");
 
         expectPromiseToWork(handlers);
@@ -232,7 +232,9 @@ describe(PromiseMock.name, () => {
 
       expect(then1).not.toHaveBeenCalled();
       expectAll(onrejected1, catch1, finally1).toHaveBeenCalledTimes(1);
-      expectAll(onrejected1, catch1).toHaveBeenCalledWith(new Error("Rejected!"));
+      expectAll(onrejected1, catch1).toHaveBeenCalledWith(
+        new Error("Rejected!"),
+      );
       expect(onrejected1).toHaveBeenCalledBefore(catch1);
       expect(catch1).toHaveBeenCalledBefore(finally1);
     });
