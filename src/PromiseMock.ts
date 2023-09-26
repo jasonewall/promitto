@@ -1,10 +1,12 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
 type Action = () => void;
+type PromiseResolver<T> = (value: T | PromiseLike<T>) => void;
+type PromiseRejector = (reason?: any) => void;
 
 export type PromiseExecutor<T> = (
-  resolve: (value: T | PromiseLike<T>) => void,
-  reject: (reason?: any) => void,
+  resolve: PromiseResolver<T>,
+  reject: PromiseRejector,
 ) => void;
 
 enum PromiseState {
@@ -57,8 +59,8 @@ class PromiseMock<T> {
   ): Promise<TResult1 | TResult2> {
     return this.fork(
       (
-        resolveNext: (value: TResult1 | TResult2) => void,
-        rejectNext: (reason: any) => void,
+        resolveNext: PromiseResolver<TResult1 | TResult2>,
+        rejectNext: PromiseRejector,
       ) => {
         this.onSettled(() =>
           this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected),
@@ -72,8 +74,8 @@ class PromiseMock<T> {
   ): Promise<T | TResult> {
     return this.fork(
       (
-        resolveNext: (value: T | TResult) => void,
-        rejectNext: (reason: any) => void,
+        resolveNext: PromiseResolver<T | TResult>,
+        rejectNext: PromiseRejector,
       ) => {
         this.onSettled(() =>
           this.completeCatch(resolveNext, rejectNext, onrejected),
@@ -84,7 +86,7 @@ class PromiseMock<T> {
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
     return this.fork(
-      (resolveNext: (value: T) => void, rejectNext: (reason: any) => void) => {
+      (resolveNext: PromiseResolver<T>, rejectNext: PromiseRejector) => {
         this.onSettled(() =>
           this.completeFinally(resolveNext, rejectNext, onfinally),
         );
@@ -127,8 +129,8 @@ class PromiseMock<T> {
   }
 
   private completeThen<TResult1, TResult2>(
-    resolveNext: (value: TResult1 | TResult2) => void,
-    rejectNext: (reason: any) => void,
+    resolveNext: PromiseResolver<TResult1 | TResult2>,
+    rejectNext: PromiseRejector,
     onfulfilled: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected: RejectionHandler<TResult2> | undefined | null,
   ) {
@@ -152,8 +154,8 @@ class PromiseMock<T> {
   }
 
   private completeCatch<TResult>(
-    resolveNext: (value: T | TResult) => void,
-    rejectNext: (reason?: any) => void,
+    resolveNext: PromiseResolver<T | TResult>,
+    rejectNext: PromiseRejector,
     onrejected: RejectionHandler<TResult> | undefined | null,
   ) {
     if (this.status === PromiseState.Rejected) {
@@ -173,8 +175,8 @@ class PromiseMock<T> {
   }
 
   private completeFinally(
-    resolveNext: (value: T) => void,
-    rejectNext: (reason: any) => void,
+    resolveNext: PromiseResolver<T>,
+    rejectNext: PromiseRejector,
     onfinally: (() => void) | undefined | null,
   ) {
     onfinally && onfinally();
