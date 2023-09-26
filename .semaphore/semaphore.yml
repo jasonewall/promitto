@@ -5,7 +5,7 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 blocks:
-  - name: Test
+  - name: Promitto
     task:
       jobs:
         - name: Jest
@@ -16,3 +16,5 @@ blocks:
             - npm install
             - cache store
             - npm run test
+            - test-results publish report.xml
+            - test-results gen-pipeline-report
