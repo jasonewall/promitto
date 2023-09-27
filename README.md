@@ -2,15 +2,14 @@
 
 Simple Promise mocking for unit testing.
 
-```ts
+```typescript
 const p = promitto.pending("Some API results");
 
 render(<MyComponent data={p} />);
 
 // assert loading state
 
-p.resolve();
-await p.settled();
+await p.resolve().settled();
 
 // assert final state
 ```

@@ -236,16 +236,18 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
    * All appropriate handlers added with then, catch, finally are executed.
    * @param value Value to resolve this promise to.
    */
-  resolve(value: T) {
+  resolve(value: T): PromiseMock<T> {
     this.status = PromiseState.Fulfilled;
     this.value = value;
     this.runDeferred();
+    return this;
   }
 
-  reject(reason: any) {
+  reject(reason: any): PromiseMock<T> {
     this.status = PromiseState.Rejected;
     this.reason = reason;
     this.runDeferred();
+    return this;
   }
 }
 
@@ -261,10 +263,11 @@ class PendingPromiseMock<T> extends PromiseMock<T> {
    * Resolves the promise to the previously provided value.
    * All appropriate handlers added with then, catch, finally are executed.
    */
-  resolve() {
+  resolve(): PromiseMock<T> {
     this.status = PromiseState.Fulfilled;
     this.value = this.pendingValue;
     this.runDeferred();
+    return this;
   }
 }
 
