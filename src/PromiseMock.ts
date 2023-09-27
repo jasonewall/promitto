@@ -54,7 +54,7 @@ class PromiseMock<T> {
   private _children: PromiseMock<any>[] = [];
 
   /**
-   * All PromiseMock's created by calling then, catch, finally of this Promise mock.
+   * All PromiseMock's created by calling then, catch, finally of this PromiseMock.
    *
    * Provided for troubleshooting purposes to help determine which code path may
    * have created the promise chain.
