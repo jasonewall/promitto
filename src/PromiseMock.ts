@@ -1,7 +1,7 @@
 type FulfillmentHandler<T, R> = (value: T) => R | PromiseLike<R>;
 type RejectionHandler<T> = (reason: any) => T | PromiseLike<T>;
 type Action = () => void;
-type PromiseResolver<T> = (value: T | PromiseLike<T>) => void;
+type PromiseResolver<TResult> = (value: TResult | PromiseLike<TResult>) => void;
 type PromiseRejector = (reason?: any) => void;
 
 export type PromiseExecutor<T> = (
@@ -161,6 +161,10 @@ class PromiseMock<T> {
         } catch (error: any) {
           rejectNext(error);
         }
+      } else {
+        // This type cast is dirty but anything else is less efficient
+        // Or doesn't match the promise type spec
+        resolveNext(this.value as TResult1);
       }
     } else {
       if (onrejected) {

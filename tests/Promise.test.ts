@@ -163,6 +163,16 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           expect(then2).toHaveBeenCalledAfter(finally1);
           expect(finally2).toHaveBeenCalledAfter(then2);
         });
+
+        it("should be callable without a fulfillment handler", async () => {
+          const p = TestPromise.resolve("Start");
+          const chain = p.then();
+
+          // calling with empty handler does indeed create a new promise
+          expect(Object.is(p, chain)).toEqual(false);
+
+          await expect(chain).resolves.toEqual("Start");
+        });
       });
 
       describe("when rejected", () => {
@@ -217,6 +227,13 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           expect(then1).not.toHaveBeenCalled();
           expect(onrejected).toHaveBeenCalledTimes(1);
         });
+
+        it("should be callable without a handler", async () => {
+          const p = TestPromise.reject();
+          const chain = p.then();
+
+          await expect(chain).rejects.toEqual(undefined);
+        });
       });
     });
 
@@ -228,19 +245,37 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           const chain = TestPromise.resolve("Banana").catch(catch1).then(then1);
 
-          const result = await chain;
-
-          expect(result).toEqual(["Pepper"]);
+          await expect(chain).resolves.toEqual(["Pepper"]);
           expect(catch1).not.toHaveBeenCalled();
           expect(then1).toHaveBeenCalledTimes(1);
           expect(then1).toHaveBeenCalledWith("Banana");
+        });
+
+        it("should be callable without a handler", async () => {
+          const p = Promise.resolve("with a value");
+          const chain = p.catch();
+
+          await expect(p).resolves.toEqual("with a value");
         });
       });
 
       describe("when rejected", () => {
         it("should still reject if we catch without a handler", async () => {
-          const chain = TestPromise.reject().catch();
+          const p = TestPromise.reject();
+          const chain = p.catch();
+
+          expect(Object.is(p, chain)).toEqual(false);
           await expect(chain).rejects.toEqual(undefined);
+        });
+
+        it("should resolve even if catch does not return a value", async () => {
+          const [catch1] = mockFn("catch1");
+          const chain = TestPromise.reject().catch(catch1);
+
+          await expect(chain).resolves.toEqual(undefined);
+
+          expect(catch1).toHaveBeenCalledWith(undefined);
+          expect(catch1).toHaveBeenCalledTimes(1);
         });
 
         it("should resolve to a value if catch does not re-reject", async () => {
@@ -393,6 +428,15 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
           expect(finally2).toHaveBeenCalledAfter(then1);
           expect(finally3).toHaveBeenCalledAfter(finally2);
         });
+
+        it("should be callable without a handler", async () => {
+          const p = TestPromise.resolve();
+          const chain = p.finally();
+
+          expect(Object.is(p, chain)).toEqual(false);
+
+          await expect(chain).resolves.toEqual(undefined);
+        });
       });
 
       describe("when rejected", () => {
@@ -434,6 +478,15 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
           expectAll(...handlers).toHaveBeenCalledTimes(1);
         });
+
+        it("should be callable without a handler", async () => {
+          const p = TestPromise.reject();
+          const chain = p.finally();
+
+          expect(Object.is(p, chain)).toEqual(false);
+
+          await expect(chain).rejects.toEqual(undefined);
+        });
       });
     });
 
@@ -452,17 +505,6 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
 
       it("should be callable without a param", async () => {
         await expect(TestPromise.reject()).rejects.toEqual(undefined);
-
-        let chain: Promise<unknown>;
-        chain = TestPromise.reject().catch();
-        await expect(chain).rejects.toEqual(undefined);
-
-        const [catch1] = mockFn("catch1");
-        chain = TestPromise.reject().catch(catch1);
-        await expect(chain).resolves.toEqual(undefined);
-
-        expect(catch1).toHaveBeenCalledWith(undefined);
-        expect(catch1).toHaveBeenCalledTimes(1);
       });
     });
 

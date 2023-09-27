@@ -195,6 +195,20 @@ describe(PromiseMock.name, () => {
     });
   });
 
+  describe("#then", () => {
+    // this is a duped test from Promise.test.ts but wanted to ensure the type
+    // fallback works correctly without the TestPromiseConstructor obfuscating PromiseMock's behaviour
+    it("should allow not passing in handlers and fallback to the original type", async () => {
+      const p = new PassivePromiseMock<string>();
+      const chain = p.then();
+
+      // can't actually assert this but chain is expected to be Promise<string>
+      p.resolve("Start");
+
+      await expect(chain).resolves.toEqual("Start");
+    });
+  });
+
   describe("adding multiple handlers to the same promise (not chaining)", () => {
     const attachCallbacks = <T>(p: Promise<T>) => {
       const [then1, onrejected1, catch1, finally1] = mockFn(
