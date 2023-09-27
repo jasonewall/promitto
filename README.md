@@ -72,6 +72,6 @@ await p.settled();
 
 This is a huge concern of Promitto. We DO NOT want our tests to be buggy because our mocks are creating promise chains that behave differently than real promises. To ensure Promitto PromiseMocks behave exactly like real promises we have a large test suite that compares the behaviour of PromiseMock to Promise.
 
-In short - we run our test suite againse Promise core to test the tests. See [the Promise tests](./tests/Promise.test.ts) for more details.
+In short - we run our test suite against Promise core to test the tests. See [the Promise tests](./tests/Promise.test.ts) for more details.
 
 If you feel there are some cases that are missing Pull Requests and/or Issues describing the missing use cases are welcome.
