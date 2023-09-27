@@ -23,7 +23,7 @@ Returns a promise mock that can be resolved or rejected by calling either:
 1. `resolve(value?: T)` - The promise will resolve to the value passed in, and value will be passed to any fulfillment handlers attached to the promise mock.
 2. `reject(reason?: any)` - The promise will reject with the reason passed in and reason will be passed to any rejection handlers attached to the promise mock.
 
-No then, catch, finally callbacks will be executed until either of these are called.
+No `then`, `catch`, `finally` callbacks will be executed until either of these are called.
 
 ```ts
 const p = promitto<string>();
@@ -35,7 +35,7 @@ p.reject(new Error("Error handling is fun!"));
 
 `promitto.pending<T>(value: T)`
 
-Returns a promise mock that will not run any callbacks (added through then, catch, finally) until `resolve()` is called on the promise mock. The wrapped value of the promise mock is locked into the value initially passed into `pending`.
+Returns a promise mock that will not run any callbacks (added through `then`, `catch`, `finally`) until `resolve()` is called on the promise mock. The wrapped value of the promise mock is locked into the value initially passed into `pending`.
 
 ```ts
 const p = promitto.pending("Hello!");
@@ -45,7 +45,7 @@ p.resolve();
 
 `promitto.resolve(value?: T)`
 
-Returns a promise mock that is already resolved to the provided value. Any callbacks added by then, catch, or finally will be immediately executed.
+Returns a promise mock that is already resolved to the provided value. Any callbacks added by `then`, `catch`, or `finally` will be immediately executed.
 
 ```ts
 const p = promitto.resolve(['Cats', 'Dogs']);
@@ -53,7 +53,7 @@ const p = promitto.resolve(['Cats', 'Dogs']);
 
 `promitto.reject(reason?: any)`
 
-Return a promise mock that is already rejected to the provided value. Any callbacks added by then, catch, or finally will be imediately executed.
+Return a promise mock that is already rejected to the provided value. Any callbacks added by `then`, `catch`, or `finally` will be imediately executed.
 
 ```ts
 const p = promitto.reject(new Error('Missing pets!'));
