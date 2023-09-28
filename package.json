@@ -1,8 +1,8 @@
 {
-  "name": "promitto",
+  "name": "@jasonewall/promitto",
   "private": false,
-  "version": "0.0.0",
-  "description": "Easier mocked promises to control resolutions",
+  "version": "0.1.1",
+  "description": "Easier mocked promises to control resolutions and await to the end of a chain",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist",
