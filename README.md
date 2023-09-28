@@ -14,9 +14,15 @@ await p.resolve().settled();
 // assert final state
 ```
 
+## Getting Started
+
+`npm i --save-dev @jasonewall/promitto`
+
+`import promitto from '@jasonewall/promitto'`
+
 ## API
 
-`promitto<T>()`
+### `promitto<T>()`
 
 Returns a promise mock that can be resolved or rejected by calling either:
 
@@ -33,7 +39,7 @@ p.resolve("Testing is fun!");
 p.reject(new Error("Error handling is fun!"));
 ```
 
-`promitto.pending<T>(value: T)`
+### `promitto.pending<T>(value: T)`
 
 Returns a promise mock that will not run any callbacks (added through `then`, `catch`, `finally`) until `resolve()` is called on the promise mock. The wrapped value of the promise mock is locked into the value initially passed into `pending`.
 
@@ -43,25 +49,27 @@ const p = promitto.pending("Hello!");
 p.resolve();
 ```
 
-`promitto.resolve(value?: T)`
+### `promitto.resolve(value?: T)`
 
 Returns a promise mock that is already resolved to the provided value. Any callbacks added by `then`, `catch`, or `finally` will be immediately executed.
 
 ```ts
-const p = promitto.resolve(['Cats', 'Dogs']);
+const p = promitto.resolve(["Cats", "Dogs"]);
 ```
 
-`promitto.reject(reason?: any)`
+### `promitto.reject(reason?: any)`
 
 Return a promise mock that is already rejected to the provided value. Any callbacks added by `then`, `catch`, or `finally` will be imediately executed.
 
 ```ts
-const p = promitto.reject(new Error('Missing pets!'));
+const p = promitto.reject(new Error("Missing pets!"));
 ```
 
-### Use Cases
+## Use Cases
 
 `promitto.resolve` and `promitto.reject` exist as drop-in replacements for `Promise.resolve` and `Promise.reject`. This is functionally different than the other methods which return a pending promise mock. You would want to use the Promitto pre-resolved methods in your test cases to allow the application to build promise mocks instead of async promises. Our tests then have access to the entirety of the chain. This becomes more relevant as we understand the purpose of the [`#settled`](#settled) method.
+
+`promitto<T>()` and `promitto.pending(value: T)` both return a perpetually pending promise that will not resolve until one of their resolver functions are called. This would be useful for validating loading state, or testing that other actions/side effects do not fire until a promise is resolved.
 
 ## `children`
 
@@ -81,9 +89,9 @@ It is NOT recommended that you make assertions based on the contents of children
 
 While the implementation of all promise mocks in `promitto` are entirely synchronous the Promise spec behaves in such a way that fulfillment handlers (callbacks passed as the first argument of `then`) and rejection handlers (callbacks passed into `catch` or as the second argument of `then`) can resolve to `PromiseLike<Return Type>`. This means that application code or any other package in our applications could add asynchronous promises to our chain. Because of this all PromiseMock types have a `settled()` method that returns a core Promise which will only resolve once the entire chain is settled.
 
- > Keep in mind when we inject Promises into our application in unit tests, we typically do not have access to the end of the chain. The code we are trying to test is appending new promises to the chain via `then`, `catch`, and `finally`. Otherwise if we could await the end of the chain we wouldn't have need of `settled()` or other tricks like `await Promise.resolve()`/`await new Promise(process.nextTick)`/`await new Promise(setImmediate)`.
- >
- > NOTE: Some of these tricks aren't functional on all platforms, where `settled()` should always be reliable.
+> Keep in mind when we inject Promises into our application in unit tests, we typically do not have access to the end of the chain. The code we are trying to test is appending new promises to the chain via `then`, `catch`, and `finally`. Otherwise if we could await the end of the chain we wouldn't have need of `settled()` or other tricks like `await Promise.resolve()`/`await new Promise(process.nextTick)`/`await new Promise(setImmediate)`.
+>
+> NOTE: Some of these tricks aren't functional on all platforms, where `settled()` should always be reliable.
 
 ```ts
 const p = promitto.resolve("A value to represent success.");
@@ -94,6 +102,7 @@ await p.settled();
 
 // add your expectations for after the promise has settled
 ```
+
 The `settled()` promise always resolves to the same state as our head promise, so rejected heads should be caught by the standard approach of your testing framework.
 
 e.g. In jest:
