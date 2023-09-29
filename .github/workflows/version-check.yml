@@ -1,0 +1,45 @@
+name: Prevent Merges if Version not bumped
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  check_version:
+    runs-on: unbuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Get package version
+        id: package_version
+        uses: sergeysova/jq-action@v2
+        with:
+          cmd: "jq .version package.json -r"
+      - name: Get version from branch name
+        id: branch_version
+        run: echo "${{ github.event.pull_request.head.ref }}" | grep -oE '(hotfix|release)/[0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
+
+      - name: Check base branch
+        id: check_base_branch
+        run: |
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+
+          if [[ "$BASE_BRANCH" == "main" ]]; then
+              echo "Base branch is 'main'. Checking verson..."
+              PACKAGE_VERSION="${{ steps.package_version.outputs.value }}"
+              HEAD_BRANCH_VERSION="${{ steps.branch_version.outputs.value }}"
+              echo "Version from package.json: $PACKAGE_VERSION"
+              echo "Version from branch name: $HEAD_BRANCH_VERSION"
+
+            if [[ "$PACKAGE_VERSION" != "$HEAD_BRANCH_VERSION" ]]; then
+                echo "package.json has not been updated. Update before releasing!"
+                exit 1
+            else
+                echo "version from package.json matches head branch. Ship it!"
+            fi
+          else
+              echo "Not merging to 'main'. Merge is allowed."
+          fi
