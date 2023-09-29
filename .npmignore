@@ -1,3 +1,4 @@
+.github/
 tests/
 jest.config.ts
 tsconfig.build.json
