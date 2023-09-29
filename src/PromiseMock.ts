@@ -206,7 +206,7 @@ class PromiseMock<T> {
   }
 }
 
-export class IllegalPromiseMutationError extends Error {
+class IllegalPromiseMutationError extends Error {
   type = "IllegalPromiseMutationError" as const;
 }
 
@@ -306,8 +306,11 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
   }
 }
 
+export { IllegalPromiseMutationError };
+
 export {
   PromiseMock,
+  PromiseState,
   ActivePromiseMock,
   PassivePromiseMock,
   PendingPromiseMock,
