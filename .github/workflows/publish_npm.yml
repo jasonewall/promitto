@@ -23,7 +23,7 @@ jobs:
         run: npm run build
       - name: Publish
         run: |
-          if [ "${{ github.ref }}" = "refs/head/main" }; then
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             npm publish
           else
             echo "Not on 'main' branch. Skipping publish"
