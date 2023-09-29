@@ -20,7 +20,8 @@ jobs:
           cmd: "jq .version package.json -r"
       - name: Get version from branch name
         id: branch_version
-        run: echo "::set-output name=version::$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE '(hotfix|release)/[0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo)"
+        run: |
+          echo "version=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE '(hotfix|release)/[0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo)" >> $GITHUB_OUTPUT
 
       - name: Check base branch
         id: check_base_branch
@@ -30,7 +31,7 @@ jobs:
           if [[ "$BASE_BRANCH" == "main" ]]; then
               echo "Base branch is 'main'. Checking verson..."
               PACKAGE_VERSION="${{ steps.package_version.outputs.value }}"
-              HEAD_BRANCH_VERSION="${{ steps.branch_version.outputs.value }}"
+              HEAD_BRANCH_VERSION="${{ steps.branch_version.outputs.version }}"
               echo "Version from package.json: $PACKAGE_VERSION"
               echo "Version from branch name: $HEAD_BRANCH_VERSION"
 
