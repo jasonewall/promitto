@@ -4,10 +4,7 @@ type Action = () => void;
 type PromiseResolver<TResult> = (value: TResult | PromiseLike<TResult>) => void;
 type PromiseRejector = (reason?: any) => void;
 
-export type PromiseExecutor<T> = (
-  resolve: PromiseResolver<T>,
-  reject: PromiseRejector,
-) => void;
+export type PromiseExecutor<T> = (resolve: PromiseResolver<T>, reject: PromiseRejector) => void;
 
 enum PromiseState {
   Pending = "pending",
@@ -67,41 +64,21 @@ class PromiseMock<T> {
     onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
     onrejected?: RejectionHandler<TResult2> | undefined | null,
   ): Promise<TResult1 | TResult2> {
-    return this.fork(
-      (
-        resolveNext: PromiseResolver<TResult1 | TResult2>,
-        rejectNext: PromiseRejector,
-      ) => {
-        this.onSettled(() =>
-          this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected),
-        );
-      },
-    );
+    return this.fork((resolveNext: PromiseResolver<TResult1 | TResult2>, rejectNext: PromiseRejector) => {
+      this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
+    });
   }
 
-  catch<TResult = never>(
-    onrejected?: RejectionHandler<TResult> | undefined | null,
-  ): Promise<T | TResult> {
-    return this.fork(
-      (
-        resolveNext: PromiseResolver<T | TResult>,
-        rejectNext: PromiseRejector,
-      ) => {
-        this.onSettled(() =>
-          this.completeCatch(resolveNext, rejectNext, onrejected),
-        );
-      },
-    );
+  catch<TResult = never>(onrejected?: RejectionHandler<TResult> | undefined | null): Promise<T | TResult> {
+    return this.fork((resolveNext: PromiseResolver<T | TResult>, rejectNext: PromiseRejector) => {
+      this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
+    });
   }
 
   finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-    return this.fork(
-      (resolveNext: PromiseResolver<T>, rejectNext: PromiseRejector) => {
-        this.onSettled(() =>
-          this.completeFinally(resolveNext, rejectNext, onfinally),
-        );
-      },
-    );
+    return this.fork((resolveNext: PromiseResolver<T>, rejectNext: PromiseRejector) => {
+      this.onSettled(() => this.completeFinally(resolveNext, rejectNext, onfinally));
+    });
   }
 
   /**
@@ -113,18 +90,19 @@ class PromiseMock<T> {
    * end of the chain, however the promise returned by settled will not
    * resolve/reject until the entire chain is resolved.
    */
-  async settled(): Promise<T> {
-    try {
-      await Promise.all(this._children.map((value) => value.settled()));
-    } catch (error: any) {
-      // don't care
-    }
-
-    if (this.status === PromiseState.Fulfilled) {
-      return this.value!;
-    } else {
-      throw this.reason;
-    }
+  settled(): Promise<T> {
+    return new Promise((resolveSettled, rejectSettled) => {
+      Promise.all(this._children.map((child) => child.settled()))
+        .finally(() => {
+          this.onSettled(() => {
+            if (this.status === PromiseState.Fulfilled) resolveSettled(this.value!);
+            else rejectSettled(this.reason);
+          });
+        })
+        .catch(() => {
+          return;
+        });
+    });
   }
 
   get [Symbol.toStringTag]() {
@@ -228,6 +206,10 @@ class PromiseMock<T> {
   }
 }
 
+export class IllegalPromiseMutationError extends Error {
+  type = "IllegalPromiseMutationError" as const;
+}
+
 /**
  * PassivePromiseMock is a PromiseMock that has no initial resolved value or
  * a wrapped action in a constructor. Passive in the sense that it is simply constructed
@@ -241,6 +223,8 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
    * @param value Value to resolve this promise to.
    */
   resolve(value: T): PromiseMock<T> {
+    if (this.status !== PromiseState.Pending)
+      throw new IllegalPromiseMutationError("Cannot modify a settled promise");
     this.status = PromiseState.Fulfilled;
     this.value = value;
     this.runDeferred();
@@ -248,6 +232,9 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
   }
 
   reject(reason: any): PromiseMock<T> {
+    if (this.status !== PromiseState.Pending)
+      throw new IllegalPromiseMutationError("Cannot modify a settled promise");
+
     this.status = PromiseState.Rejected;
     this.reason = reason;
     this.runDeferred();
