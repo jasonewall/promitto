@@ -101,6 +101,18 @@ await p.settled();
 
 [[More Info](./USECASES.md#settled)]
 
+### `#status: PromiseState`
+
+Returns the current status of this PromiseMock. Will be one of:
+
+```
+enum PromiseState {
+  Pending = "pending",
+  Fulfilled = "fulfilled",
+  Rejected = "rejected",
+}
+```
+
 ## Compatability with Core JS/TS Promise
 
 This is a huge concern of Promitto. We DO NOT want our tests to be buggy because our mocks are creating promise chains that behave differently than real promises. To ensure Promitto PromiseMocks behave exactly like real promises we have a large test suite that compares the behaviour of PromiseMock to Promise.
