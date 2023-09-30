@@ -1,7 +1,15 @@
 import { describe } from "@jest/globals";
 import { expectAll, mockFn } from "./utils/assorted";
 import "./utils/invocationCallOrderMatcher";
-import { PromiseMock, PassivePromiseMock, PendingPromiseMock, ActivePromiseMock } from "@self/PromiseMock";
+import {
+  PromiseMock,
+  PassivePromiseMock,
+  PendingPromiseMock,
+  ActivePromiseMock,
+  PromiseState,
+  ResolvedPromiseMock,
+  RejectedPromiseMock,
+} from "@self/PromiseMock";
 
 describe(PromiseMock.name, () => {
   it("should be assignable as a promise", () => {
@@ -200,6 +208,56 @@ describe(PromiseMock.name, () => {
       p.resolve("Start");
 
       await expect(chain).resolves.toEqual("Start");
+    });
+  });
+
+  describe("#status", () => {
+    describe(PassivePromiseMock.name, () => {
+      it("should start as pending", () => {
+        const p = new PassivePromiseMock();
+        expect(p.status).toEqual(PromiseState.Pending);
+      });
+
+      it("should move to fulfilled when resolved", () => {
+        const p = new PassivePromiseMock();
+        p.resolve("hello");
+
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+
+      it("should move to rejected when rejected", () => {
+        const p = new PassivePromiseMock();
+        p.reject(new Error("Oh no"));
+
+        expect(p.status).toEqual(PromiseState.Rejected);
+      });
+    });
+
+    describe(PendingPromiseMock.name, () => {
+      it("should start as pending", () => {
+        const p = new PendingPromiseMock("Eventual value");
+        expect(p.status).toEqual(PromiseState.Pending);
+      });
+
+      it("should move to fulfilled when resolved", () => {
+        const p = new PendingPromiseMock("Eventual value");
+        p.resolve();
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+    });
+
+    describe(ResolvedPromiseMock.name, () => {
+      it("should start in fulfilled", () => {
+        const p = new ResolvedPromiseMock();
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+    });
+
+    describe(RejectedPromiseMock.name, () => {
+      it("should start in rejected", () => {
+        const p = new RejectedPromiseMock();
+        expect(p.status).toEqual(PromiseState.Rejected);
+      });
     });
   });
 
