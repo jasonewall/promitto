@@ -1,7 +1,15 @@
 import { describe } from "@jest/globals";
 import { expectAll, mockFn } from "./utils/assorted";
 import "./utils/invocationCallOrderMatcher";
-import { PromiseMock, PassivePromiseMock } from "@self/PromiseMock";
+import {
+  PromiseMock,
+  PassivePromiseMock,
+  PendingPromiseMock,
+  ActivePromiseMock,
+  PromiseState,
+  ResolvedPromiseMock,
+  RejectedPromiseMock,
+} from "@self/PromiseMock";
 
 describe(PromiseMock.name, () => {
   it("should be assignable as a promise", () => {
@@ -79,9 +87,7 @@ describe(PromiseMock.name, () => {
       const [then1, then2] = handlers;
 
       const p = PromiseMock.resolve("Peter");
-      then1.mockImplementation((value: string) =>
-        PromiseMock.resolve(`${value} Piper`),
-      );
+      then1.mockImplementation((value: string) => PromiseMock.resolve(`${value} Piper`));
       p.then(then1).then(then2);
 
       expectAll(...handlers).toHaveBeenCalledTimes(1);
@@ -95,9 +101,7 @@ describe(PromiseMock.name, () => {
       const [then1, then2] = handlers;
 
       const p = PromiseMock.resolve("Sally");
-      then1.mockImplementation((value: string) =>
-        Promise.resolve(`${value} Sells`),
-      );
+      then1.mockImplementation((value: string) => Promise.resolve(`${value} Sells`));
       p.then(then1).then(then2);
 
       const result = await p.settled();
@@ -171,9 +175,7 @@ describe(PromiseMock.name, () => {
         expectAll(...handlers).toHaveBeenCalledTimes(1);
         expect(then1).toHaveBeenCalledWith("Minor Person's name");
         expect(then2).toHaveBeenCalledWith(17);
-        expect(catch1).toHaveBeenCalledWith(
-          new Error("17 is not old enough to drink!"),
-        );
+        expect(catch1).toHaveBeenCalledWith(new Error("17 is not old enough to drink!"));
       }
 
       it("should work when resolving after chain is setup", () => {
@@ -209,14 +211,59 @@ describe(PromiseMock.name, () => {
     });
   });
 
+  describe("#status", () => {
+    describe(PassivePromiseMock.name, () => {
+      it("should start as pending", () => {
+        const p = new PassivePromiseMock();
+        expect(p.status).toEqual(PromiseState.Pending);
+      });
+
+      it("should move to fulfilled when resolved", () => {
+        const p = new PassivePromiseMock();
+        p.resolve("hello");
+
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+
+      it("should move to rejected when rejected", () => {
+        const p = new PassivePromiseMock();
+        p.reject(new Error("Oh no"));
+
+        expect(p.status).toEqual(PromiseState.Rejected);
+      });
+    });
+
+    describe(PendingPromiseMock.name, () => {
+      it("should start as pending", () => {
+        const p = new PendingPromiseMock("Eventual value");
+        expect(p.status).toEqual(PromiseState.Pending);
+      });
+
+      it("should move to fulfilled when resolved", () => {
+        const p = new PendingPromiseMock("Eventual value");
+        p.resolve();
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+    });
+
+    describe(ResolvedPromiseMock.name, () => {
+      it("should start in fulfilled", () => {
+        const p = new ResolvedPromiseMock();
+        expect(p.status).toEqual(PromiseState.Fulfilled);
+      });
+    });
+
+    describe(RejectedPromiseMock.name, () => {
+      it("should start in rejected", () => {
+        const p = new RejectedPromiseMock();
+        expect(p.status).toEqual(PromiseState.Rejected);
+      });
+    });
+  });
+
   describe("adding multiple handlers to the same promise (not chaining)", () => {
     const attachCallbacks = <T>(p: Promise<T>) => {
-      const [then1, onrejected1, catch1, finally1] = mockFn(
-        "then1",
-        "onrejected1",
-        "catch1",
-        "finally1",
-      );
+      const [then1, onrejected1, catch1, finally1] = mockFn("then1", "onrejected1", "catch1", "finally1");
       p.then(then1, onrejected1);
       p.catch(catch1);
       p.finally(finally1);
@@ -246,9 +293,7 @@ describe(PromiseMock.name, () => {
 
       expect(then1).not.toHaveBeenCalled();
       expectAll(onrejected1, catch1, finally1).toHaveBeenCalledTimes(1);
-      expectAll(onrejected1, catch1).toHaveBeenCalledWith(
-        new Error("Rejected!"),
-      );
+      expectAll(onrejected1, catch1).toHaveBeenCalledWith(new Error("Rejected!"));
       expect(onrejected1).toHaveBeenCalledBefore(catch1);
       expect(catch1).toHaveBeenCalledBefore(finally1);
     });
@@ -302,6 +347,22 @@ describe(PromiseMock.name, () => {
       expect(then1).toHaveBeenCalledWith("A-ok");
 
       await expect(chain).rejects.toThrowError("rejected");
+    });
+
+    it("should no raise an ambiguous error if not settled", async () => {
+      const p = new PassivePromiseMock<string>();
+      expect(() => p.settled()).not.toThrow();
+    });
+
+    it("should return a promise that will later be resolved once we are settled", async () => {
+      const p = new PassivePromiseMock<string>();
+      const settled = p.settled();
+
+      // await settled; // should timeout because we have not yet resolved
+
+      p.resolve("settled");
+
+      await expect(settled).resolves.toEqual("settled");
     });
   });
 });

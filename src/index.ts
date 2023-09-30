@@ -1,3 +1,10 @@
 import promitto from "./dsl";
-export { PromiseMock } from "./PromiseMock";
+export {
+  PromiseMock,
+  PromiseState,
+  PassivePromiseMock,
+  PendingPromiseMock,
+  ResolvedPromiseMock,
+  RejectedPromiseMock,
+} from "./PromiseMock";
 export default promitto;
