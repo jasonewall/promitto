@@ -67,9 +67,9 @@ const p = promitto.reject(new Error("Missing pets!"));
 
 See [Use Cases](./USECASES.md#first-the-entry-point-functions) for more info.
 
-## PromiseMock Instance Methods
+## PromiseMock<T> Instance Methods
 
-### `#children`
+### `#children: PromiseMock<any>`
 
 Returns all promises created by calling `then`, `catch`, `finally` of this PromiseMock.
 
@@ -83,7 +83,7 @@ console.log(p.children);
 
 [[More Info](./USECASES.md#children)]
 
-### `#settled()`
+### `#settled(): Promise<T>`
 
 Returns a promise that only settles once this promise and all of it's children are settled.
 
