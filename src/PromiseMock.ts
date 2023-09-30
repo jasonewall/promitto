@@ -64,16 +64,19 @@ class PromiseMock<T> {
     return this._status;
   }
 
+  // not using handler alias types for public methods so users intellisense is clearer
   then<TResult1 = T, TResult2 = never>(
-    onfulfilled?: FulfillmentHandler<T, TResult1> | undefined | null,
-    onrejected?: RejectionHandler<TResult2> | undefined | null,
+    onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
   ): Promise<TResult1 | TResult2> {
     return this.fork((resolveNext: PromiseResolver<TResult1 | TResult2>, rejectNext: PromiseRejector) => {
       this.onSettled(() => this.completeThen(resolveNext, rejectNext, onfulfilled, onrejected));
     });
   }
 
-  catch<TResult = never>(onrejected?: RejectionHandler<TResult> | undefined | null): Promise<T | TResult> {
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null,
+  ): Promise<T | TResult> {
     return this.fork((resolveNext: PromiseResolver<T | TResult>, rejectNext: PromiseRejector) => {
       this.onSettled(() => this.completeCatch(resolveNext, rejectNext, onrejected));
     });
@@ -90,9 +93,8 @@ class PromiseMock<T> {
    * by then, catch, finally and their children are resolved.
    *
    * This is mostly useful for testing code that may add callbacks several
-   * layers deep. In these scenarios it's likely you will not have access to the
-   * end of the chain, however the promise returned by settled will not
-   * resolve/reject until the entire chain is resolved.
+   * layers deep and you do not have access to the
+   * end of the chain.
    */
   settled(): Promise<T> {
     return new Promise((resolveSettled, rejectSettled) => {

@@ -11,11 +11,7 @@ function assignCallbacks<T>(p: PromiseMock<T>) {
   return handlers;
 }
 
-async function expectToBehaveLikeResolvedPromise<T>(
-  p: PromiseMock<T>,
-  value: T,
-  ...handlers: jest.Mock[]
-) {
+async function expectToBehaveLikeResolvedPromise<T>(p: PromiseMock<T>, value: T, ...handlers: jest.Mock[]) {
   const [then1, catch1, finally1] = handlers;
   await expect(p.settled()).resolves.toEqual(value);
   expectAll(then1, finally1).toHaveBeenCalledTimes(1);
@@ -66,11 +62,7 @@ describe("promitto", () => {
       expectAll(...handlers).not.toHaveBeenCalled();
 
       p.reject(new Error("rejected"));
-      await expectToBehaveLikeRejectedPromise(
-        p,
-        new Error("rejected"),
-        ...handlers,
-      );
+      await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
     });
   });
 
@@ -95,11 +87,7 @@ describe("promitto", () => {
       const p = dsl.reject(new Error("rejected"));
       const handlers = assignCallbacks(p);
 
-      await expectToBehaveLikeRejectedPromise(
-        p,
-        new Error("rejected"),
-        ...handlers,
-      );
+      await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
     });
 
     it("should be callable without a param", async () => {
