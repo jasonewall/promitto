@@ -1,3 +1,3 @@
 import promitto from "./dsl";
-export { PromiseMock, PromiseState } from "./PromiseMock";
+export * from "./PromiseMock";
 export default promitto;
