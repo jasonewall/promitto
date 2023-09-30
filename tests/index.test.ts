@@ -1,10 +1,23 @@
-import promitto from "../src";
-import { PromiseState } from "../src";
+import promitto, {
+  PassivePromiseMock,
+  PendingPromiseMock,
+  PromiseMock,
+  PromiseState,
+  RejectedPromiseMock,
+  ResolvedPromiseMock,
+} from "../src";
 
-it("promitto/dsl should be the default import", async () => {
+test("promitto/dsl should be the default import", async () => {
   await expect(promitto().resolve("Hello from Promitto!").settled()).resolves.toEqual("Hello from Promitto!");
 });
 
-it("PromiseState should be importable", () => {
-  expect(PromiseState.Pending).toEqual(PromiseState.Pending);
+test("everything else should be importable", () => {
+  [
+    PromiseMock,
+    PromiseState,
+    PassivePromiseMock,
+    PendingPromiseMock,
+    RejectedPromiseMock,
+    ResolvedPromiseMock,
+  ].forEach((x) => expect(x).toBeTruthy());
 });
