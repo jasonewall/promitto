@@ -196,8 +196,8 @@ class PromiseMock<T> {
     }
   }
 
-  private fork<T>(executor: PromiseExecutor<T>): ActivePromiseMock<T> {
-    const promise = new ActivePromiseMock<T>(executor);
+  protected fork<TResult>(executor: PromiseExecutor<TResult>): PromiseMock<TResult> {
+    const promise = new ActivePromiseMock<TResult>(executor);
     // For debugging purposes and for settled() we track the promises we fork
     this._children.push(promise);
     return promise;
@@ -314,10 +314,53 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
 
 export { IllegalPromiseMutationError };
 
+class AsyncPromiseMock<T> extends PromiseMock<T> {
+  constructor(executor: PromiseExecutor<T>) {
+    super();
+
+    const resolve = (value: T | PromiseLike<T>) => {
+      this._status = PromiseState.Fulfilled;
+      unwrap(value, (unwrapped: T) => (this.value = unwrapped), reject);
+      this.runDeferred();
+    };
+
+    const reject = (reason?: any) => {
+      this._status = PromiseState.Rejected;
+      this.reason = reason;
+      this.runDeferred();
+    };
+
+    setTimeout(() => {
+      try {
+        executor(resolve, reject);
+      } catch (error: any) {
+        reject(error);
+      }
+    });
+  }
+
+  protected fork<TResult>(executor: PromiseExecutor<TResult>): PromiseMock<TResult> {
+    return new AsyncPromiseMock<TResult>(executor);
+  }
+
+  static resolve<T>(value?: T | undefined): PromiseMock<T> {
+    return new this((resolve) => {
+      resolve(value!);
+    });
+  }
+
+  static reject<T = never>(reason?: any): PromiseMock<T> {
+    return new this((_, reject) => {
+      reject(reason);
+    });
+  }
+}
+
 export {
   PromiseMock,
   PromiseState,
   ActivePromiseMock,
+  AsyncPromiseMock,
   PassivePromiseMock,
   PendingPromiseMock,
   RejectedPromiseMock,
