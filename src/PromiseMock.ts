@@ -293,12 +293,14 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
   constructor(executor: PromiseExecutor<T>) {
     super();
     const resolve = (value: T | PromiseLike<T>) => {
+      if (this._status !== PromiseState.Pending) return;
       this._status = PromiseState.Fulfilled;
       unwrap(value, (unwrapped: T) => (this.value = unwrapped), reject);
       this.runDeferred();
     };
 
     const reject = (reason?: any) => {
+      if (this._status !== PromiseState.Pending) return;
       this._status = PromiseState.Rejected;
       this.reason = reason;
       this.runDeferred();

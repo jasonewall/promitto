@@ -67,9 +67,9 @@ const p = promitto.reject(new Error("Missing pets!"));
 
 See [Use Cases](./USECASES.md#first-the-entry-point-functions) for more info.
 
-## PromiseMock Instance Methods
+## PromiseMock<T> Instance Methods
 
-### `#children`
+### `#children: PromiseMock<any>`
 
 Returns all promises created by calling `then`, `catch`, `finally` of this PromiseMock.
 
@@ -83,12 +83,12 @@ console.log(p.children);
 
 [[More Info](./USECASES.md#children)]
 
-### `#settled()`
+### `#settled(): Promise<T>`
 
 Returns a promise that only settles once this promise and all of it's children are settled.
 
 ```ts
-const p = promitto.resolved("Good job!");
+const p = promitto.resolve("Good job!");
 
 callMyApplication(p);
 
@@ -100,6 +100,18 @@ await p.settled();
 [Settling Rejected PromiseMocks](./USECASES.md#settling-rejected-promisemocks)
 
 [[More Info](./USECASES.md#settled)]
+
+### `#status: PromiseState`
+
+Returns the current status of this PromiseMock. Will be one of:
+
+```
+enum PromiseState {
+  Pending = "pending",
+  Fulfilled = "fulfilled",
+  Rejected = "rejected",
+}
+```
 
 ## Compatability with Core JS/TS Promise
 
