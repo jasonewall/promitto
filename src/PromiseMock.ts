@@ -292,6 +292,10 @@ class RejectedPromiseMock<T> extends PromiseMock<T> {
 class ActivePromiseMock<T> extends PromiseMock<T> {
   constructor(executor: PromiseExecutor<T>) {
     super();
+    this.runExecutor(executor);
+  }
+
+  protected runExecutor(executor: PromiseExecutor<T>) {
     const resolve = (value: T | PromiseLike<T>) => {
       this._status = PromiseState.Fulfilled;
       unwrap(value, (unwrapped: T) => (this.value = unwrapped), reject);
@@ -314,29 +318,9 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
 
 export { IllegalPromiseMutationError };
 
-class AsyncPromiseMock<T> extends PromiseMock<T> {
-  constructor(executor: PromiseExecutor<T>) {
-    super();
-
-    const resolve = (value: T | PromiseLike<T>) => {
-      this._status = PromiseState.Fulfilled;
-      unwrap(value, (unwrapped: T) => (this.value = unwrapped), reject);
-      this.runDeferred();
-    };
-
-    const reject = (reason?: any) => {
-      this._status = PromiseState.Rejected;
-      this.reason = reason;
-      this.runDeferred();
-    };
-
-    setTimeout(() => {
-      try {
-        executor(resolve, reject);
-      } catch (error: any) {
-        reject(error);
-      }
-    });
+class AsyncPromiseMock<T> extends ActivePromiseMock<T> {
+  protected runExecutor(executor: PromiseExecutor<T>): void {
+    setTimeout(() => super.runExecutor(executor));
   }
 
   protected fork<TResult>(executor: PromiseExecutor<TResult>): PromiseMock<TResult> {
