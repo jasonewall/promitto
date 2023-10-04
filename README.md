@@ -88,7 +88,7 @@ console.log(p.children);
 Returns a promise that only settles once this promise and all of it's children are settled.
 
 ```ts
-const p = promitto.resolved("Good job!");
+const p = promitto.resolve("Good job!");
 
 callMyApplication(p);
 
