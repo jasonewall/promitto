@@ -1,7 +1,7 @@
 import { describe } from "@jest/globals";
 import "./utils/invocationCallOrderMatcher";
 import { expectAll, mockFn } from "./utils/assorted";
-import { PromiseExecutor, ActivePromiseMock, AsyncPromiseMock } from "@self/PromiseMock";
+import { PromiseExecutor, SyncPromiseMock, AsyncPromiseMock } from "@self/PromiseMock";
 
 interface TestPromiseConstructor {
   new <T>(executor: PromiseExecutor<T>): Promise<T>;
@@ -13,7 +13,7 @@ interface TestPromiseConstructor {
 
 const promiseTypes: TestPromiseConstructor[] = [];
 promiseTypes.push(Promise);
-promiseTypes.push(ActivePromiseMock);
+promiseTypes.push(SyncPromiseMock);
 promiseTypes.push(AsyncPromiseMock);
 
 promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
