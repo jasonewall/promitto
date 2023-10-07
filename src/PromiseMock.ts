@@ -342,9 +342,10 @@ class AsyncPromiseMock<T> extends ActivePromiseMock<T> {
 
 export { IllegalPromiseMutationError };
 
+export type { PromiseMockConstructor };
+
 export {
   PromiseMock,
-  PromiseMockConstructor,
   PromiseState,
   SyncPromiseMock,
   AsyncPromiseMock,
