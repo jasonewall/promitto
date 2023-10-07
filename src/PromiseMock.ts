@@ -35,6 +35,14 @@ let PromiseId = 0;
 
 interface PromiseMockConstructor {
   new <T>(executor: PromiseExecutor<T>): PromiseMock<T>;
+
+  resolve(): PromiseMock<void>;
+
+  resolve<T>(value: T): PromiseMock<Awaited<T>>;
+
+  resolve<T>(value: T | PromiseLike<T>): PromiseMock<Awaited<T>>;
+
+  reject<T = never>(reason?: any): PromiseMock<T>;
 }
 
 /**
@@ -310,9 +318,7 @@ abstract class ActivePromiseMock<T> extends PromiseMock<T> {
 }
 
 /**
- * Most akin to core Promises as the constructor takes in an executor. Mostly used
- * internally for the chain functions then/catch/finally as they have need for injecting behavour
- * to the promise chain.
+ * A synchronous implementation of the Promise interface.
  */
 class SyncPromiseMock<T> extends ActivePromiseMock<T> {
   constructor(executor: PromiseExecutor<T>) {
@@ -321,8 +327,10 @@ class SyncPromiseMock<T> extends ActivePromiseMock<T> {
   }
 }
 
-export { IllegalPromiseMutationError };
-
+/**
+ * An async PromiseMock implementation for when async promises are
+ * better for your test scenario.
+ */
 class AsyncPromiseMock<T> extends ActivePromiseMock<T> {
   constructor(executor: PromiseExecutor<T>) {
     super(executor, AsyncPromiseMock);
@@ -330,8 +338,11 @@ class AsyncPromiseMock<T> extends ActivePromiseMock<T> {
   }
 }
 
+export { IllegalPromiseMutationError };
+
 export {
   PromiseMock,
+  PromiseMockConstructor,
   PromiseState,
   SyncPromiseMock,
   AsyncPromiseMock,
