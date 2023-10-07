@@ -14,7 +14,7 @@
     "paths": {
       "@self/*": ["src/*"]
     },
-    "types": ["@types/jest"]
+    "types": ["node", "@types/jest"]
   },
   "exclude": ["node_modules", "dist"]
 }
