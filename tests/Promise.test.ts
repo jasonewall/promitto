@@ -432,6 +432,49 @@ promiseTypes.forEach((TestPromise: TestPromiseConstructor) => {
       });
     });
 
+    describe(".new", () => {
+      it("should accept an executor that will resolve the promise", async () => {
+        const p = new TestPromise<string>((resolve) => resolve("hello!"));
+        await expect(p).resolves.toEqual("hello!");
+      });
+
+      it("should accept an executor that can be rejected", async () => {
+        const p = new TestPromise<string>((_, reject) => {
+          reject(new Error("rejected"));
+        });
+        await expect(p).rejects.toThrow("rejected");
+      });
+
+      it("should not be able to be resolved once settled", async () => {
+        const resolved = new TestPromise<string>((resolve) => {
+          resolve("Hello!");
+          resolve("Good-bye!");
+        });
+        await expect(resolved).resolves.toEqual("Hello!");
+
+        const rejected = new TestPromise<string>((resolve, reject) => {
+          reject(new Error("rejected"));
+          resolve("It's ok");
+        });
+
+        await expect(rejected).rejects.toThrow("rejected");
+      });
+
+      it("should not be able to be rejected once settled", async () => {
+        const resolved = new TestPromise<string>((resolve, reject) => {
+          resolve("Hello!");
+          reject(new Error("rejected"));
+        });
+        await expect(resolved).resolves.toEqual("Hello!");
+
+        const rejected = new TestPromise<string>((resolve, reject) => {
+          reject(new Error("rejected"));
+          reject(new Error("Good-bye!"));
+        });
+        await expect(rejected).rejects.toThrow("rejected");
+      });
+    });
+
     describe(".resolve", () => {
       it("should be callable without a param", async () => {
         await expect(TestPromise.resolve()).resolves.toEqual(undefined);
