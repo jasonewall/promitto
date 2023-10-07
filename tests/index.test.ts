@@ -13,6 +13,26 @@ describe("promitto/dsl", () => {
       "Hello from Promitto!",
     );
   });
+
+  it("should be able to assign other imports as modes", () => {
+    const originalMode = promitto.defaultMode;
+    try {
+      promitto.defaultMode = sync;
+      promitto.defaultMode = async;
+    } finally {
+      promitto.defaultMode = originalMode;
+    }
+  });
+
+  it("should be able to assign the modes directly from promitto", () => {
+    const originalMode = promitto.defaultMode;
+    try {
+      promitto.defaultMode = promitto.sync;
+      promitto.defaultMode = promitto.async;
+    } finally {
+      promitto.defaultMode = originalMode;
+    }
+  });
 });
 
 test("everything else should be importable", () => {
