@@ -5,10 +5,8 @@ import {
   PromiseMock,
   PassivePromiseMock,
   PendingPromiseMock,
-  ActivePromiseMock,
+  SyncPromiseMock,
   PromiseState,
-  ResolvedPromiseMock,
-  RejectedPromiseMock,
 } from "@self/PromiseMock";
 
 describe(PromiseMock.name, () => {
@@ -19,7 +17,7 @@ describe(PromiseMock.name, () => {
       action.then(then1);
     };
 
-    const promise = new PassivePromiseMock<string>();
+    const promise = new PassivePromiseMock<string>(SyncPromiseMock);
     somePromisingFunction(promise);
     expect(then1).not.toHaveBeenCalled();
 
@@ -30,7 +28,7 @@ describe(PromiseMock.name, () => {
   });
 
   it("should behave like a javascript object", () => {
-    const promise = new PromiseMock();
+    const promise = new PromiseMock(SyncPromiseMock);
     const result = Object.prototype.toString.call(promise);
     expect(result).toEqual("[object PromiseMock]");
   });
@@ -39,7 +37,7 @@ describe(PromiseMock.name, () => {
     it("should call finally and then handlers", () => {
       const handlers = mockFn("then1", "finally1");
       const [then1, finally1] = handlers;
-      const p = new PassivePromiseMock<number>();
+      const p = new PassivePromiseMock<number>(SyncPromiseMock);
 
       p.then(then1);
       p.finally(finally1);
@@ -56,7 +54,7 @@ describe(PromiseMock.name, () => {
     it("should allow chaining finally and then calls", () => {
       const handlers = mockFn("then1", "then2", "finally1", "finally2");
       const [then1, then2, finally1, finally2] = handlers;
-      const p = new PassivePromiseMock<number>();
+      const p = new PassivePromiseMock<number>(SyncPromiseMock);
 
       p.then(then1).then(then2).finally(finally1).finally(finally2);
 
@@ -76,7 +74,7 @@ describe(PromiseMock.name, () => {
 
     it("should allow adding chains after resolution", () => {
       const then1 = jest.fn().mockName("then1");
-      const p = new PassivePromiseMock<number>();
+      const p = new PassivePromiseMock<number>(SyncPromiseMock);
       p.resolve(87);
       p.then(then1);
       expect(then1).toHaveBeenCalledWith(87);
@@ -86,8 +84,8 @@ describe(PromiseMock.name, () => {
       const handlers = mockFn("then1", "then2");
       const [then1, then2] = handlers;
 
-      const p = PromiseMock.resolve("Peter");
-      then1.mockImplementation((value: string) => PromiseMock.resolve(`${value} Piper`));
+      const p = SyncPromiseMock.resolve("Peter");
+      then1.mockImplementation((value: string) => SyncPromiseMock.resolve(`${value} Piper`));
       p.then(then1).then(then2);
 
       expectAll(...handlers).toHaveBeenCalledTimes(1);
@@ -100,7 +98,7 @@ describe(PromiseMock.name, () => {
       const handlers = mockFn("then1", "then2");
       const [then1, then2] = handlers;
 
-      const p = PromiseMock.resolve("Sally");
+      const p = SyncPromiseMock.resolve("Sally");
       then1.mockImplementation((value: string) => Promise.resolve(`${value} Sells`));
       p.then(then1).then(then2);
 
@@ -113,7 +111,7 @@ describe(PromiseMock.name, () => {
     });
 
     it("should work with await", async () => {
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       p.resolve("waiting for you");
 
       const result = await p;
@@ -125,7 +123,7 @@ describe(PromiseMock.name, () => {
     it("should call finally", () => {
       const handlers = mockFn("catch1", "finally1");
       const [catch1, finally1] = handlers;
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
 
       p.catch(catch1).finally(finally1);
 
@@ -137,7 +135,7 @@ describe(PromiseMock.name, () => {
     it("should work if finally is first", () => {
       const handlers = mockFn("finally1", "catch1", "then1");
       const [finally1, catch1, then1] = handlers;
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
 
       catch1.mockReturnValue("recovered");
       p.finally(finally1).catch(catch1).then(then1);
@@ -179,7 +177,7 @@ describe(PromiseMock.name, () => {
       }
 
       it("should work when resolving after chain is setup", () => {
-        const p = new PassivePromiseMock<string>();
+        const p = new PassivePromiseMock<string>(SyncPromiseMock);
         const handlers = setupChain(p);
         expectAll(...handlers).not.toHaveBeenCalled();
         p.resolve("Minor Person's name");
@@ -188,7 +186,7 @@ describe(PromiseMock.name, () => {
       });
 
       it("should work when resolving before chain is setup", () => {
-        const p = new PassivePromiseMock<string>();
+        const p = new PassivePromiseMock<string>(SyncPromiseMock);
         p.resolve("Minor Person's name");
         const handlers = setupChain(p);
 
@@ -201,7 +199,7 @@ describe(PromiseMock.name, () => {
     // this is a duped test from Promise.test.ts but wanted to ensure the type
     // fallback works correctly without the TestPromiseConstructor obfuscating PromiseMock's behaviour
     it("should allow not passing in handlers and fallback to the original type", async () => {
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       const chain = p.then();
 
       // can't actually assert this but chain is expected to be Promise<string>
@@ -214,19 +212,19 @@ describe(PromiseMock.name, () => {
   describe("#status", () => {
     describe(PassivePromiseMock.name, () => {
       it("should start as pending", () => {
-        const p = new PassivePromiseMock();
+        const p = new PassivePromiseMock(SyncPromiseMock);
         expect(p.status).toEqual(PromiseState.Pending);
       });
 
       it("should move to fulfilled when resolved", () => {
-        const p = new PassivePromiseMock();
+        const p = new PassivePromiseMock(SyncPromiseMock);
         p.resolve("hello");
 
         expect(p.status).toEqual(PromiseState.Fulfilled);
       });
 
       it("should move to rejected when rejected", () => {
-        const p = new PassivePromiseMock();
+        const p = new PassivePromiseMock(SyncPromiseMock);
         p.reject(new Error("Oh no"));
 
         expect(p.status).toEqual(PromiseState.Rejected);
@@ -245,20 +243,6 @@ describe(PromiseMock.name, () => {
         expect(p.status).toEqual(PromiseState.Fulfilled);
       });
     });
-
-    describe(ResolvedPromiseMock.name, () => {
-      it("should start in fulfilled", () => {
-        const p = new ResolvedPromiseMock();
-        expect(p.status).toEqual(PromiseState.Fulfilled);
-      });
-    });
-
-    describe(RejectedPromiseMock.name, () => {
-      it("should start in rejected", () => {
-        const p = new RejectedPromiseMock();
-        expect(p.status).toEqual(PromiseState.Rejected);
-      });
-    });
   });
 
   describe("adding multiple handlers to the same promise (not chaining)", () => {
@@ -271,7 +255,7 @@ describe(PromiseMock.name, () => {
     };
 
     it("should only call then and finally when resolved", async () => {
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       const { then1, onrejected1, catch1, finally1 } = attachCallbacks(p);
 
       p.resolve("Success!");
@@ -285,7 +269,7 @@ describe(PromiseMock.name, () => {
     });
 
     it("should only call catch and finally when rejected", async () => {
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       const { then1, onrejected1, catch1, finally1 } = attachCallbacks(p);
 
       p.reject(new Error("Rejected!"));
@@ -310,7 +294,7 @@ describe(PromiseMock.name, () => {
       const then = jest.fn();
       then.mockReturnValue(Promise.resolve("Success!"));
 
-      const p = PromiseMock.resolve("API results");
+      const p = SyncPromiseMock.resolve("API results");
       const callStackSize = 10;
       let chain: Promise<string> = p;
       for (let i = 0; i < callStackSize; i++) {
@@ -326,7 +310,7 @@ describe(PromiseMock.name, () => {
     it("should provide a promise that resolves to however the original promise resolved", async () => {
       const catch1 = jest.fn().mockName("catch1");
       catch1.mockReturnValue("Recovered");
-      const p = PromiseMock.reject(new Error("rejected"));
+      const p = SyncPromiseMock.reject(new Error("rejected"));
       const chain = p.catch(catch1);
 
       await expect(p.settled()).rejects.toThrowError("rejected");
@@ -339,7 +323,7 @@ describe(PromiseMock.name, () => {
     it("should not get rejected if later handlers are rejected", async () => {
       const [then1] = mockFn("then1");
       then1.mockReturnValue(Promise.reject(new Error("rejected")));
-      const p = PromiseMock.resolve("A-ok");
+      const p = SyncPromiseMock.resolve("A-ok");
       const chain = p.then(then1);
 
       const result = await p.settled();
@@ -349,13 +333,13 @@ describe(PromiseMock.name, () => {
       await expect(chain).rejects.toThrowError("rejected");
     });
 
-    it("should no raise an ambiguous error if not settled", async () => {
-      const p = new PassivePromiseMock<string>();
+    it("should not raise an ambiguous error if not settled", async () => {
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       expect(() => p.settled()).not.toThrow();
     });
 
     it("should return a promise that will later be resolved once we are settled", async () => {
-      const p = new PassivePromiseMock<string>();
+      const p = new PassivePromiseMock<string>(SyncPromiseMock);
       const settled = p.settled();
 
       // await settled; // should timeout because we have not yet resolved

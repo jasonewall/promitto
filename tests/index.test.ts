@@ -1,23 +1,42 @@
 import promitto, {
+  sync,
+  async,
   PassivePromiseMock,
   PendingPromiseMock,
   PromiseMock,
   PromiseState,
-  RejectedPromiseMock,
-  ResolvedPromiseMock,
 } from "../src";
 
-test("promitto/dsl should be the default import", async () => {
-  await expect(promitto().resolve("Hello from Promitto!").settled()).resolves.toEqual("Hello from Promitto!");
+describe("promitto/dsl", () => {
+  it("should be the default import", async () => {
+    await expect(promitto().resolve("Hello from Promitto!").settled()).resolves.toEqual(
+      "Hello from Promitto!",
+    );
+  });
+
+  it("should be able to assign other imports as modes", () => {
+    const originalMode = promitto.defaultMode;
+    try {
+      promitto.defaultMode = sync;
+      promitto.defaultMode = async;
+    } finally {
+      promitto.defaultMode = originalMode;
+    }
+  });
+
+  it("should be able to assign the modes directly from promitto", () => {
+    const originalMode = promitto.defaultMode;
+    try {
+      promitto.defaultMode = promitto.sync;
+      promitto.defaultMode = promitto.async;
+    } finally {
+      promitto.defaultMode = originalMode;
+    }
+  });
 });
 
 test("everything else should be importable", () => {
-  [
-    PromiseMock,
-    PromiseState,
-    PassivePromiseMock,
-    PendingPromiseMock,
-    RejectedPromiseMock,
-    ResolvedPromiseMock,
-  ].forEach((x) => expect(x).toBeTruthy());
+  [sync, async, PromiseMock, PromiseState, PassivePromiseMock, PendingPromiseMock].forEach((x) =>
+    expect(x).toBeTruthy(),
+  );
 });

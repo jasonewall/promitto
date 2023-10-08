@@ -33,6 +33,18 @@ function unwrap<T>(
 
 let PromiseId = 0;
 
+interface PromiseMockConstructor {
+  new <T>(executor: PromiseExecutor<T>): PromiseMock<T>;
+
+  resolve(): PromiseMock<void>;
+
+  resolve<T>(value: T): PromiseMock<Awaited<T>>;
+
+  resolve<T>(value: T | PromiseLike<T>): PromiseMock<Awaited<T>>;
+
+  reject<T = never>(reason?: any): PromiseMock<T>;
+}
+
 /**
  * PromiseMock base. Handles basic implementation of then/catch/finally for the
  * extension PromiseMock types.
@@ -49,6 +61,12 @@ class PromiseMock<T> {
   protected deferredActions: Action[] = [];
 
   private _children: PromiseMock<any>[] = [];
+
+  protected childPromise: PromiseMockConstructor;
+
+  constructor(childPromiseConstructor: PromiseMockConstructor) {
+    this.childPromise = childPromiseConstructor;
+  }
 
   /**
    * All PromiseMock's created by calling then, catch, finally of this PromiseMock.
@@ -196,19 +214,11 @@ class PromiseMock<T> {
     }
   }
 
-  private fork<T>(executor: PromiseExecutor<T>): ActivePromiseMock<T> {
-    const promise = new ActivePromiseMock<T>(executor);
+  protected fork<TResult>(executor: PromiseExecutor<TResult>): PromiseMock<TResult> {
+    const promise = new this.childPromise<TResult>(executor);
     // For debugging purposes and for settled() we track the promises we fork
     this._children.push(promise);
     return promise;
-  }
-
-  static resolve<T>(value?: T): ResolvedPromiseMock<T> {
-    return new ResolvedPromiseMock(value);
-  }
-
-  static reject<T = never>(reason?: any): PromiseMock<T> {
-    return new RejectedPromiseMock<T>(reason);
   }
 }
 
@@ -251,8 +261,8 @@ class PassivePromiseMock<T> extends PromiseMock<T> {
 class PendingPromiseMock<T> extends PromiseMock<T> {
   private pendingValue: T;
 
-  constructor(value: T) {
-    super();
+  constructor(value: T, childPromiseConstructor: PromiseMockConstructor) {
+    super(childPromiseConstructor);
     this.pendingValue = value;
   }
 
@@ -268,30 +278,25 @@ class PendingPromiseMock<T> extends PromiseMock<T> {
   }
 }
 
-class ResolvedPromiseMock<T> extends PromiseMock<T> {
-  constructor(value?: T) {
-    super();
-    this._status = PromiseState.Fulfilled;
-    this.value = value;
-  }
-}
-
-class RejectedPromiseMock<T> extends PromiseMock<T> {
-  constructor(reason?: any) {
-    super();
-    this.reason = reason;
-    this._status = PromiseState.Rejected;
-  }
-}
+type Abstract = unknown;
 
 /**
- * Most akin to core Promises as the constructor takes in an executor. Mostly used
- * internally for the chain functions then/catch/finally as they have need for injecting behavour
- * to the promise chain.
+ * Base class for PromiseMocks that take in an executor.
  */
-class ActivePromiseMock<T> extends PromiseMock<T> {
-  constructor(executor: PromiseExecutor<T>) {
-    super();
+abstract class ActivePromiseMock<T> extends PromiseMock<T> {
+  constructor(executor: PromiseExecutor<T>, childPromiseConstructor: PromiseMockConstructor) {
+    super(childPromiseConstructor);
+  }
+
+  static resolve<T>(value?: T | undefined): PromiseMock<T> {
+    return new (this as Abstract as PromiseMockConstructor)((resolve) => resolve(value!));
+  }
+
+  static reject<T = never>(reason?: any): PromiseMock<T> {
+    return new (this as Abstract as PromiseMockConstructor)((_, reject) => reject(reason));
+  }
+
+  protected runExecutor(executor: PromiseExecutor<T>) {
     const resolve = (value: T | PromiseLike<T>) => {
       if (this._status !== PromiseState.Pending) return;
       this._status = PromiseState.Fulfilled;
@@ -314,14 +319,36 @@ class ActivePromiseMock<T> extends PromiseMock<T> {
   }
 }
 
+/**
+ * A synchronous implementation of the Promise interface.
+ */
+class SyncPromiseMock<T> extends ActivePromiseMock<T> {
+  constructor(executor: PromiseExecutor<T>) {
+    super(executor, SyncPromiseMock);
+    this.runExecutor(executor);
+  }
+}
+
+/**
+ * An async PromiseMock implementation for when async promises are
+ * better for your test scenario.
+ */
+class AsyncPromiseMock<T> extends ActivePromiseMock<T> {
+  constructor(executor: PromiseExecutor<T>) {
+    super(executor, AsyncPromiseMock);
+    setTimeout(() => this.runExecutor(executor));
+  }
+}
+
 export { IllegalPromiseMutationError };
+
+export type { PromiseMockConstructor };
 
 export {
   PromiseMock,
   PromiseState,
-  ActivePromiseMock,
+  SyncPromiseMock,
+  AsyncPromiseMock,
   PassivePromiseMock,
   PendingPromiseMock,
-  RejectedPromiseMock,
-  ResolvedPromiseMock,
 };

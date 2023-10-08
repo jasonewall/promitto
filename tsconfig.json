@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "target": "ES6",
     "baseUrl": ".",
     "moduleResolution": "node",
     "declaration": true,
@@ -15,7 +14,7 @@
     "paths": {
       "@self/*": ["src/*"]
     },
-    "types": ["@types/jest"]
+    "types": ["node", "@types/jest"]
   },
   "exclude": ["node_modules", "dist"]
 }

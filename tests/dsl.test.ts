@@ -1,6 +1,6 @@
 import { describe } from "@jest/globals";
-import { PromiseMock } from "@self/PromiseMock";
-import dsl from "@self/dsl";
+import { AsyncPromiseMock, PromiseMock, SyncPromiseMock } from "@self/PromiseMock";
+import dsl, { sync, async, DSL } from "@self/dsl";
 import { expectAll, mockFn } from "./utils/assorted";
 
 function assignCallbacks<T>(p: PromiseMock<T>) {
@@ -32,69 +32,114 @@ async function expectToBehaveLikeRejectedPromise<T>(
   expect(then1).not.toHaveBeenCalled();
 }
 
-describe("promitto", () => {
-  describe("#pending", () => {
-    it("should return a pending promise that represents the provided value", async () => {
-      const p = dsl.pending("a nice value");
-      const handlers = assignCallbacks(p);
-
-      expectAll(...handlers).not.toHaveBeenCalled();
-      p.resolve();
-      await expectToBehaveLikeResolvedPromise(p, "a nice value", ...handlers);
-    });
+describe("dsl", () => {
+  it("should expose sync mode directly", async () => {
+    await expect(dsl.sync().resolve("Hello from Promitto sync!")).resolves.toEqual(
+      "Hello from Promitto sync!",
+    );
   });
 
-  describe("#promise", () => {
-    it("should return a blank slate promise that can be resolved with any value", async () => {
-      const p = dsl<number>();
-      const handlers = assignCallbacks(p);
-
-      expectAll(...handlers).not.toHaveBeenCalled();
-
-      p.resolve(11);
-      await expectToBehaveLikeResolvedPromise(p, 11, ...handlers);
-    });
-
-    it("should return a blank slate promise that can be rejected with any error", async () => {
-      const p = dsl<string>();
-      const handlers = assignCallbacks(p);
-
-      expectAll(...handlers).not.toHaveBeenCalled();
-
-      p.reject(new Error("rejected"));
-      await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
-    });
+  it("should expose async directly", async () => {
+    await expect(dsl.async().resolve("Hello from Promitto async!")).resolves.toEqual(
+      "Hello from Promitto async!",
+    );
   });
 
-  describe("#resolve", () => {
-    it("should return a promise that is already resolved", async () => {
-      const p = dsl.resolve([1, 2, 3, 4]);
-      const handlers = assignCallbacks(p);
+  it("should be able to have defaultMode assigned", () => {
+    const originalMode = dsl.defaultMode;
+    try {
+      dsl.defaultMode = dsl.async;
+      const asyncP = dsl();
+      const asyncChain = asyncP.then(jest.fn());
+      expect(asyncChain).toBeInstanceOf(AsyncPromiseMock);
 
-      await expectToBehaveLikeResolvedPromise(p, [1, 2, 3, 4], ...handlers);
-    });
-
-    it("should be callable without a param", async () => {
-      const p = dsl.resolve();
-      const handlers = assignCallbacks(p);
-
-      await expectToBehaveLikeResolvedPromise(p, undefined, ...handlers);
-    });
+      dsl.defaultMode = dsl.sync;
+      const syncP = dsl();
+      const syncChain = syncP.then(jest.fn());
+      expect(syncChain).toBeInstanceOf(SyncPromiseMock);
+    } finally {
+      dsl.defaultMode = originalMode;
+    }
   });
+});
 
-  describe("#rejected", () => {
-    it("should return a promise that is already rejected", async () => {
-      const p = dsl.reject(new Error("rejected"));
-      const handlers = assignCallbacks(p);
+interface TestDSL {
+  dsl: DSL;
+  name: string;
+}
 
-      await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
+const dsls: TestDSL[] = [];
+dsls.push({ name: "promitto", dsl });
+dsls.push({ name: "syncDsl", dsl: sync });
+dsls.push({ name: "asyncDsl", dsl: async });
+
+dsls.forEach((testDSL) => {
+  describe(testDSL.name, () => {
+    const dsl = testDSL.dsl;
+
+    describe("#pending", () => {
+      it("should return a pending promise that represents the provided value", async () => {
+        const p = dsl.pending("a nice value");
+        const handlers = assignCallbacks(p);
+
+        expectAll(...handlers).not.toHaveBeenCalled();
+        p.resolve();
+        await expectToBehaveLikeResolvedPromise(p, "a nice value", ...handlers);
+      });
     });
 
-    it("should be callable without a param", async () => {
-      const p = dsl.reject();
-      const handlers = assignCallbacks(p);
+    describe("#promise", () => {
+      it("should return a blank slate promise that can be resolved with any value", async () => {
+        const p = dsl<number>();
+        const handlers = assignCallbacks(p);
 
-      await expectToBehaveLikeRejectedPromise(p, undefined, ...handlers);
+        expectAll(...handlers).not.toHaveBeenCalled();
+
+        p.resolve(11);
+        await expectToBehaveLikeResolvedPromise(p, 11, ...handlers);
+      });
+
+      it("should return a blank slate promise that can be rejected with any error", async () => {
+        const p = dsl<string>();
+        const handlers = assignCallbacks(p);
+
+        expectAll(...handlers).not.toHaveBeenCalled();
+
+        p.reject(new Error("rejected"));
+        await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
+      });
+    });
+
+    describe("#resolve", () => {
+      it("should return a promise that is already resolved", async () => {
+        const p = dsl.resolve([1, 2, 3, 4]);
+        const handlers = assignCallbacks(p);
+
+        await expectToBehaveLikeResolvedPromise(p, [1, 2, 3, 4], ...handlers);
+      });
+
+      it("should be callable without a param", async () => {
+        const p = dsl.resolve();
+        const handlers = assignCallbacks(p);
+
+        await expectToBehaveLikeResolvedPromise(p, undefined, ...handlers);
+      });
+    });
+
+    describe("#rejected", () => {
+      it("should return a promise that is already rejected", async () => {
+        const p = dsl.reject(new Error("rejected"));
+        const handlers = assignCallbacks(p);
+
+        await expectToBehaveLikeRejectedPromise(p, new Error("rejected"), ...handlers);
+      });
+
+      it("should be callable without a param", async () => {
+        const p = dsl.reject();
+        const handlers = assignCallbacks(p);
+
+        await expectToBehaveLikeRejectedPromise(p, undefined, ...handlers);
+      });
     });
   });
 });

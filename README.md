@@ -7,11 +7,11 @@ const p = promitto.pending("Some API results");
 
 render(<MyComponent data={p} />);
 
-// assert loading state
+// assert pre-resolved state
 
 await p.resolve().settled();
 
-// assert final state
+// assert post-resolve state
 ```
 
 ## Getting Started
@@ -111,6 +111,25 @@ enum PromiseState {
   Fulfilled = "fulfilled",
   Rejected = "rejected",
 }
+```
+
+## Sync vs. Async
+
+Promitto has support for both synchronous and asynchronous promise mocks. Currently by default it starts out in synchronous mode, but you can generate async promises using the async method.
+
+```ts
+const p = promitto.async();
+await expect(p.resolve("Async resolved value")).resolves.toEqual("Async resolved value");
+```
+
+`promitto.async` also supports the entire DSL.
+
+```ts
+const p = promitto.async.pending("Pending value who's callbacks will be async");
+
+const p = promitto.async.resolve("Pre-resolved value who's resolution will be async");
+
+const p = promitto.async.reject(new Error("Pre-rejected promise who's rejection will be async"));
 ```
 
 ## Compatability with Core JS/TS Promise
